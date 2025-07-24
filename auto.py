@@ -137,8 +137,15 @@ class AutoClickerApp(ctk.CTk):
         self.iconify()
         print("Click anywhere to pick location, or press ESC to cancel...")
 
+        def restore_window():
+            self.deiconify()
+            self.lift()
+            self.attributes('-topmost', True)
+            self.focus_force()
+            self.after(200, lambda: self.attributes('-topmost', False))  # Remove always-on-top after 200ms
+            self._update_position_entry()
+
         def on_click(event):
-            # Only handle ButtonEvent and only on 'down'
             if hasattr(event, 'event_type') and event.event_type == 'down':
                 x, y = mouse.get_position()
                 self.x_entry.configure(state='normal')
@@ -148,20 +155,13 @@ class AutoClickerApp(ctk.CTk):
                 self.x_entry.insert(0, str(x))
                 self.y_entry.insert(0, str(y))
                 mouse.unhook_all()
-                self.deiconify()
-                self.lift()
-                self.focus_force()
-                self._update_position_entry()
+                restore_window()
 
         def on_esc(e):
             if e.name == 'esc':
                 mouse.unhook_all()
-                self.deiconify()
-                self.lift()
-                self.focus_force()
-                self._update_position_entry()
+                restore_window()
 
-        # Listen for mouse click and ESC key
         mouse.hook(on_click)
         keyboard.on_press(on_esc)
 
