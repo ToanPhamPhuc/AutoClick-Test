@@ -34,9 +34,20 @@ class AutoClickerApp(ctk.CTk):
         self.mins = ctk.CTkEntry(row1, width=50)
         self.secs = ctk.CTkEntry(row1, width=50)
         self.ms = ctk.CTkEntry(row1, width=80)
-        for widget, default in zip([self.hours, self.mins, self.secs, self.ms], ["0"]*4):
-            widget.insert(0, default)
-            widget.pack(side='left', padx=5)
+
+        self.hours.insert(0, "0")
+        self.mins.insert(0, "0")
+        self.secs.insert(0, "0")
+        self.ms.insert(0, "100")  # Default 100 milliseconds
+
+        self.hours.pack(side='left', padx=(5, 2))
+        ctk.CTkLabel(row1, text="hours").pack(side='left')
+        self.mins.pack(side='left', padx=(10, 2))
+        ctk.CTkLabel(row1, text="mins").pack(side='left')
+        self.secs.pack(side='left', padx=(10, 2))
+        ctk.CTkLabel(row1, text="secs").pack(side='left')
+        self.ms.pack(side='left', padx=(10, 2))
+        ctk.CTkLabel(row1, text="milliseconds").pack(side='left')
 
         # === Click Options ===
         options_frame = ctk.CTkFrame(main_frame)
@@ -77,8 +88,8 @@ class AutoClickerApp(ctk.CTk):
         # === Buttons ===
         button_frame = ctk.CTkFrame(main_frame)
         button_frame.pack(pady=10)
-        self.start_btn = ctk.CTkButton(button_frame, text="Start (F6)", command=self.start_clicking)
-        self.stop_btn = ctk.CTkButton(button_frame, text="Stop (F6)", command=self.stop_clicking, state='disabled')
+        self.start_btn = ctk.CTkButton(button_frame, text="Start (Y)", command=self.start_clicking)
+        self.stop_btn = ctk.CTkButton(button_frame, text="Stop (Y)", command=self.stop_clicking, state='disabled')
         self.start_btn.pack(side='left', padx=10)
         self.stop_btn.pack(side='left', padx=10)
 
