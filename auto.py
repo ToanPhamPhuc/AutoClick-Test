@@ -30,7 +30,8 @@ class AutoClickerApp(ctk.CTk):
 
     def __init__(self):
         super().__init__()
-        self.title("Auto Clicker (Python)")
+        self.title("Stopped - Auto Clicker (Python)")
+        self.attributes('-topmost', True)
         self.geometry("600x500")
         self.resizable(False, False)
 
@@ -210,12 +211,14 @@ class AutoClickerApp(ctk.CTk):
         self.running = True
         self.start_btn.configure(state='disabled')
         self.stop_btn.configure(state='normal')
+        self.title("Clicking - Auto Clicker (Python)")
         threading.Thread(target=self.perform_clicks, daemon=True).start()
 
     def stop_clicking(self):
         self.running = False
         self.start_btn.configure(state='normal')
         self.stop_btn.configure(state='disabled')
+        self.title("Stopped - Auto Clicker (Python)")
 
     def set_hotkey(self):
         # Modal dialog for hotkey setting
