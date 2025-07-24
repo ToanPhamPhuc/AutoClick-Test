@@ -44,6 +44,9 @@ class AutoClickerApp(ctk.CTk):
         self.listener_thread = threading.Thread(target=self.hotkey_listener, daemon=True)
         self.listener_thread.start()
 
+    def only_int(self, P):
+        return P.isdigit() or P == ""
+
     def _build_ui(self):
         # Set light theme
         ctk.set_appearance_mode("light")
@@ -52,16 +55,18 @@ class AutoClickerApp(ctk.CTk):
         main_frame = ctk.CTkFrame(self)
         main_frame.pack(padx=10, pady=10, fill='both', expand=True)
 
+        vcmd = (self.register(self.only_int), '%P')
+
         # === Click Interval ===
         interval_frame = ctk.CTkFrame(main_frame, border_width=1, border_color="#cccccc")
         interval_frame.pack(fill='x', pady=(0, 10))
         ctk.CTkLabel(interval_frame, text="Click interval", font=("Segoe UI", 11, "bold")).pack(anchor='w', padx=10, pady=(5, 0))
         row1 = ctk.CTkFrame(interval_frame)
         row1.pack(padx=10, pady=5)
-        self.hours = ctk.CTkEntry(row1, width=50, font=("Segoe UI", 11))
-        self.mins = ctk.CTkEntry(row1, width=50, font=("Segoe UI", 11))
-        self.secs = ctk.CTkEntry(row1, width=50, font=("Segoe UI", 11))
-        self.ms = ctk.CTkEntry(row1, width=80, font=("Segoe UI", 11))
+        self.hours = ctk.CTkEntry(row1, width=50, font=("Segoe UI", 11), validate='key', validatecommand=vcmd)
+        self.mins = ctk.CTkEntry(row1, width=50, font=("Segoe UI", 11), validate='key', validatecommand=vcmd)
+        self.secs = ctk.CTkEntry(row1, width=50, font=("Segoe UI", 11), validate='key', validatecommand=vcmd)
+        self.ms = ctk.CTkEntry(row1, width=80, font=("Segoe UI", 11), validate='key', validatecommand=vcmd)
         self.hours.insert(0, "0")
         self.mins.insert(0, "0")
         self.secs.insert(0, "0")
@@ -99,7 +104,7 @@ class AutoClickerApp(ctk.CTk):
         self.repeat_var = ctk.StringVar(value="Repeat until stopped")
         self.repeat_radio = ctk.CTkRadioButton(repeat_inner, text="Repeat", variable=self.repeat_var, value="Repeat", font=("Segoe UI", 11), command=self._update_repeat_entry)
         self.repeat_radio.pack(side='left', padx=(0, 5))
-        self.repeat_times = ctk.CTkEntry(repeat_inner, width=60, font=("Segoe UI", 11))
+        self.repeat_times = ctk.CTkEntry(repeat_inner, width=60, font=("Segoe UI", 11), validate='key', validatecommand=vcmd)
         self.repeat_times.insert(0, "1")
         self.repeat_times.pack(side='left', padx=(0, 10))
         self.repeat_until_radio = ctk.CTkRadioButton(repeat_inner, text="Repeat until stopped", variable=self.repeat_var, value="Repeat until stopped", font=("Segoe UI", 11), command=self._update_repeat_entry)
@@ -117,8 +122,8 @@ class AutoClickerApp(ctk.CTk):
         self.pos_radio1.pack(side='left', padx=(0, 10))
         self.pos_radio2 = ctk.CTkRadioButton(pos_inner, text="Pick location", variable=self.position_var, value="Pick location", font=("Segoe UI", 11), command=self._update_position_entry)
         self.pos_radio2.pack(side='left', padx=(0, 10))
-        self.x_entry = ctk.CTkEntry(pos_inner, width=60, font=("Segoe UI", 11))
-        self.y_entry = ctk.CTkEntry(pos_inner, width=60, font=("Segoe UI", 11))
+        self.x_entry = ctk.CTkEntry(pos_inner, width=60, font=("Segoe UI", 11), validate='key', validatecommand=vcmd)
+        self.y_entry = ctk.CTkEntry(pos_inner, width=60, font=("Segoe UI", 11), validate='key', validatecommand=vcmd)
         self.x_entry.insert(0, "0")
         self.y_entry.insert(0, "0")
         self.x_entry.pack(side='left', padx=(0, 5))
@@ -196,14 +201,17 @@ class AutoClickerApp(ctk.CTk):
         position = self.get_position()
 
         clicks = 0
+        next_time = time.perf_counter()
         while self.running and clicks < count:
             if position:
                 pyautogui.click(x=position[0], y=position[1], button=button, clicks=click_type)
             else:
                 pyautogui.click(button=button, clicks=click_type)
-            time.sleep(interval)
             clicks += 1
-
+            next_time += interval
+            sleep_time = next_time - time.perf_counter()
+            if sleep_time > 0:
+                time.sleep(sleep_time)
         self.stop_clicking()
 
     def start_clicking(self):
