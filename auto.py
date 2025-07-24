@@ -4,22 +4,44 @@ import threading
 import time
 import keyboard
 import mouse
+import json
+import os
 
 ctk.set_appearance_mode("System")
 ctk.set_default_color_theme("blue")
 
 class AutoClickerApp(ctk.CTk):
+    def load_hotkey(self):
+        try:
+            if os.path.exists("settings.json"):
+                with open("settings.json", "r") as f:
+                    data = json.load(f)
+                    return data.get("hotkey", "f6")
+        except Exception:
+            pass
+        return "f6"
+
+    def save_hotkey(self):
+        try:
+            with open("settings.json", "w") as f:
+                json.dump({"hotkey": self.hotkey}, f)
+        except Exception:
+            pass
+
     def __init__(self):
         super().__init__()
-        self.title("OP Auto Clicker 3.1 (Python)")
-        self.geometry("800x500")
+        self.title("Auto Clicker (Python)")
+        self.geometry("600x500")
         self.resizable(False, False)
 
         self.running = False
-        self.hotkey = 'f6'
+        self.hotkey = self.load_hotkey()
+        self.listener_should_restart = False
+        self.listener_thread = None
 
         self._build_ui()
-        self._start_hotkey_listener()
+        self.listener_thread = threading.Thread(target=self.hotkey_listener, daemon=True)
+        self.listener_thread.start()
 
     def _build_ui(self):
         # Set light theme
@@ -107,8 +129,8 @@ class AutoClickerApp(ctk.CTk):
         # === Buttons ===
         button_frame = ctk.CTkFrame(main_frame)
         button_frame.pack(pady=10)
-        self.start_btn = ctk.CTkButton(button_frame, text="Start (Y)", command=self.start_clicking, font=("Segoe UI", 11))
-        self.stop_btn = ctk.CTkButton(button_frame, text="Stop (Y)", command=self.stop_clicking, state='disabled', font=("Segoe UI", 11))
+        self.start_btn = ctk.CTkButton(button_frame, text=f"Start ({self.hotkey.upper()})", command=self.start_clicking, font=("Segoe UI", 11))
+        self.stop_btn = ctk.CTkButton(button_frame, text=f"Stop ({self.hotkey.upper()})", command=self.stop_clicking, state='disabled', font=("Segoe UI", 11))
         self.hotkey_btn = ctk.CTkButton(button_frame, text="Hotkey setting", command=self.set_hotkey, font=("Segoe UI", 11))
         self.record_btn = ctk.CTkButton(button_frame, text="Record & Playback", command=self.fake_record, font=("Segoe UI", 11))
         self.start_btn.pack(side='left', padx=10)
@@ -196,13 +218,64 @@ class AutoClickerApp(ctk.CTk):
         self.stop_btn.configure(state='disabled')
 
     def set_hotkey(self):
-        self.hotkey_label.configure(text="Press any key...")
-        self.hotkey = keyboard.read_key()
-        self.hotkey_label.configure(text=f"Hotkey: {self.hotkey.upper()}")
+        # Modal dialog for hotkey setting
+        dialog = ctk.CTkToplevel(self)
+        dialog.title("Hotkey Setting")
+        dialog.geometry("350x180")
+        dialog.resizable(False, False)
+        dialog.grab_set()  # Make modal
+
+        ctk.CTkLabel(dialog, text="Hotkey Setting", font=("Segoe UI", 13, "bold")).pack(pady=(15, 5))
+
+        frame = ctk.CTkFrame(dialog)
+        frame.pack(pady=10)
+
+        ctk.CTkLabel(frame, text="Start / Stop", font=("Segoe UI", 11)).pack(side="left", padx=10)
+
+        hotkey_var = ctk.StringVar(value=self.hotkey.upper())
+        hotkey_entry = ctk.CTkEntry(frame, width=60, textvariable=hotkey_var, font=("Segoe UI", 13), justify="center", state="readonly")
+        hotkey_entry.pack(side="left", padx=10)
+
+        # Listen for key press
+        def on_key(event):
+            key = event.name.upper()
+            hotkey_var.set(key)
+
+        keyboard_hook = keyboard.on_press(on_key, suppress=False)
+
+        def on_ok():
+            keyboard.unhook(keyboard_hook)
+            self.hotkey = hotkey_var.get().lower()
+            self.hotkey_label.configure(text=f"Hotkey: {self.hotkey.upper()}")
+            self.start_btn.configure(text=f"Start ({self.hotkey.upper()})")
+            self.stop_btn.configure(text=f"Stop ({self.hotkey.upper()})")
+            self.save_hotkey()
+            # Restart hotkey listener
+            self.listener_should_restart = True
+            if self.listener_thread and self.listener_thread.is_alive():
+                self.listener_thread.join(timeout=1)
+            self.listener_should_restart = False
+            self.listener_thread = threading.Thread(target=self.hotkey_listener, daemon=True)
+            self.listener_thread.start()
+            dialog.destroy()
+
+        def on_cancel():
+            keyboard.unhook(keyboard_hook)
+            dialog.destroy()
+
+        btn_frame = ctk.CTkFrame(dialog)
+        btn_frame.pack(pady=10)
+        ctk.CTkButton(btn_frame, text="Ok", command=on_ok, width=80).pack(side="left", padx=10)
+        ctk.CTkButton(btn_frame, text="Cancel", command=on_cancel, width=80).pack(side="left", padx=10)
+
+        dialog.protocol("WM_DELETE_WINDOW", on_cancel)
 
     def hotkey_listener(self):
         while True:
             keyboard.wait(self.hotkey)
+            if self.listener_should_restart:
+                self.listener_should_restart = False
+                break
             if self.running:
                 self.stop_clicking()
             else:
