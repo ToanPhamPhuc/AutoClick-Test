@@ -70,7 +70,7 @@ class AutoClickerApp(ctk.CTk):
         self.hours.insert(0, "0")
         self.mins.insert(0, "0")
         self.secs.insert(0, "0")
-        self.ms.insert(0, "100")
+        self.ms.insert(0, "9")
         self.hours.pack(side='left', padx=(5, 2))
         ctk.CTkLabel(row1, text="hours", font=("Segoe UI", 11)).pack(side='left')
         self.mins.pack(side='left', padx=(10, 2))
@@ -144,6 +144,12 @@ class AutoClickerApp(ctk.CTk):
         self.hotkey_btn.pack(side='left', padx=10)
         self.record_btn.pack(side='left', padx=10)
 
+        # === Info and CPS Labels ===
+        self.info_label = ctk.CTkLabel(main_frame, text="Note: Maximum CPS is limited by your system and Python. Setting interval <10ms may not increase speed.", font=("Segoe UI", 9), text_color="red")
+        self.info_label.pack(pady=(0, 5))
+        self.cps_label = ctk.CTkLabel(main_frame, text="CPS: 0.0", font=("Segoe UI", 11, "bold"))
+        self.cps_label.pack(pady=(0, 5))
+
         self.hotkey_label = ctk.CTkLabel(main_frame, text=f"Hotkey: {self.hotkey.upper()}", font=("Segoe UI", 11))
         self.hotkey_label.pack(pady=(0, 5))
 
@@ -202,16 +208,29 @@ class AutoClickerApp(ctk.CTk):
 
         clicks = 0
         next_time = time.perf_counter()
+        start_time = time.perf_counter()
+        last_update = start_time
+        last_clicks = 0
+        # CPS update every 0.5s
+        def update_cps_label():
+            elapsed = time.perf_counter() - start_time
+            cps = clicks / elapsed if elapsed > 0 else 0.0
+            self.cps_label.configure(text=f"CPS: {cps:.1f}")
         while self.running and clicks < count:
             if position:
                 pyautogui.click(x=position[0], y=position[1], button=button, clicks=click_type)
             else:
                 pyautogui.click(button=button, clicks=click_type)
             clicks += 1
+            now = time.perf_counter()
+            if now - last_update >= 0.5:
+                update_cps_label()
+                last_update = now
             next_time += interval
             sleep_time = next_time - time.perf_counter()
             if sleep_time > 0:
                 time.sleep(sleep_time)
+        update_cps_label()
         self.stop_clicking()
 
     def start_clicking(self):
@@ -227,6 +246,7 @@ class AutoClickerApp(ctk.CTk):
         self.start_btn.configure(state='normal')
         self.stop_btn.configure(state='disabled')
         self.title("Stopped - Auto Clicker (Python)")
+        self.cps_label.configure(text="CPS: 0.0")
 
     def set_hotkey(self):
         # Modal dialog for hotkey setting
