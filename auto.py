@@ -6,6 +6,7 @@ import keyboard
 import mouse
 import json
 import os
+from tkinter import messagebox
 
 ctk.set_appearance_mode("System")
 ctk.set_default_color_theme("blue")
@@ -17,38 +18,40 @@ class AutoClickerApp(ctk.CTk):
                 with open("settings.json", "r") as f:
                     data = json.load(f)
                     return data.get("hotkey", "f6")
-        except Exception:
-            pass
-        return "f6"
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to load hotkey settings: {e}")
+            return "f6"
 
     def save_hotkey(self):
         try:
             with open("settings.json", "w") as f:
                 json.dump({"hotkey": self.hotkey}, f)
-        except Exception:
-            pass
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to save hotkey settings: {e}")
 
     def __init__(self):
         super().__init__()
         self.title("Stopped - Auto Clicker (Python)")
         self.attributes('-topmost', True)
-        self.geometry("600x500")
+        self.geometry("600x550")
         self.resizable(False, False)
 
         self.running = False
         self.hotkey = self.load_hotkey()
         self.listener_should_restart = False
         self.listener_thread = None
+        self.start_time = 0
 
         self._build_ui()
         self.listener_thread = threading.Thread(target=self.hotkey_listener, daemon=True)
         self.listener_thread.start()
 
     def only_int(self, P):
-        return P.isdigit() or P == ""
+        if P == "" or (P.isdigit() and int(P) >= 0):
+            return True
+        return False
 
     def _build_ui(self):
-        # Set light theme
         ctk.set_appearance_mode("light")
         ctk.set_default_color_theme("blue")
 
@@ -144,7 +147,10 @@ class AutoClickerApp(ctk.CTk):
         self.hotkey_btn.pack(side='left', padx=10)
         self.record_btn.pack(side='left', padx=10)
 
-        # === Info and CPS Labels ===
+        # === Status Label ===
+        self.status_label = ctk.CTkLabel(main_frame, text="Status: Idle", font=("Segoe UI", 11))
+        self.status_label.pack(pady=(10, 5))
+
         self.info_label = ctk.CTkLabel(main_frame, text="Note: Maximum CPS is limited by your system and Python. Setting interval <10ms may not increase speed.", font=("Segoe UI", 9), text_color="red")
         self.info_label.pack(pady=(0, 5))
         self.cps_label = ctk.CTkLabel(main_frame, text="CPS: 0.0", font=("Segoe UI", 11, "bold"))
@@ -153,18 +159,26 @@ class AutoClickerApp(ctk.CTk):
         self.hotkey_label = ctk.CTkLabel(main_frame, text=f"Hotkey: {self.hotkey.upper()}", font=("Segoe UI", 11))
         self.hotkey_label.pack(pady=(0, 5))
 
-    def _start_hotkey_listener(self):
-        threading.Thread(target=self.hotkey_listener, daemon=True).start()
-
     def get_interval(self):
         try:
-            return int(self.hours.get()) * 3600 + int(self.mins.get()) * 60 + int(self.secs.get()) + int(self.ms.get()) / 1000
-        except:
+            hours = int(self.hours.get() or 0)
+            mins = int(self.mins.get() or 0)
+            secs = int(self.secs.get() or 0)
+            ms = int(self.ms.get() or 0)
+            if hours < 0 or mins < 0 or secs < 0 or ms < 0:
+                return 0.1
+            return hours * 3600 + mins * 60 + secs + ms / 1000
+        except ValueError:
             return 0.1
 
     def get_position(self):
         if self.position_var.get() == "Pick location":
-            return (int(self.x_entry.get()), int(self.y_entry.get()))
+            try:
+                x = int(self.x_entry.get() or 0)
+                y = int(self.y_entry.get() or 0)
+                return (x, y)
+            except ValueError:
+                return None
         return None
 
     def pick_location(self):
@@ -176,7 +190,7 @@ class AutoClickerApp(ctk.CTk):
             self.lift()
             self.attributes('-topmost', True)
             self.focus_force()
-            self.after(200, lambda: self.attributes('-topmost', False))  # Remove always-on-top after 200ms
+            self.after(200, lambda: self.attributes('-topmost', False))
             self._update_position_entry()
 
         def on_click(event):
@@ -201,37 +215,43 @@ class AutoClickerApp(ctk.CTk):
 
     def perform_clicks(self):
         interval = self.get_interval()
-        count = float('inf') if self.repeat_var.get() == "Repeat until stopped" else int(self.repeat_times.get())
+        count = float('inf') if self.repeat_var.get() == "Repeat until stopped" else int(self.repeat_times.get() or 1)
         button = self.mouse_button.get().lower()
         click_type = 2 if self.click_type.get() == "Double" else 1
         position = self.get_position()
 
+        self.start_time = time.perf_counter_ns()
         clicks = 0
-        next_time = time.perf_counter()
-        start_time = time.perf_counter()
-        last_update = start_time
-        last_clicks = 0
-        # CPS update every 0.5s
-        def update_cps_label():
-            elapsed = time.perf_counter() - start_time
-            cps = clicks / elapsed if elapsed > 0 else 0.0
-            self.cps_label.configure(text=f"CPS: {cps:.1f}")
+        next_time = time.perf_counter_ns()
+        last_update = next_time
+
         while self.running and clicks < count:
+            current_time = time.perf_counter_ns()
             if position:
                 pyautogui.click(x=position[0], y=position[1], button=button, clicks=click_type)
             else:
                 pyautogui.click(button=button, clicks=click_type)
             clicks += 1
-            now = time.perf_counter()
-            if now - last_update >= 0.5:
-                update_cps_label()
-                last_update = now
-            next_time += interval
-            sleep_time = next_time - time.perf_counter()
+            next_time += int(interval * 1e9)
+            sleep_time = (next_time - current_time) / 1e9
             if sleep_time > 0:
                 time.sleep(sleep_time)
-        update_cps_label()
+            if (current_time - last_update) / 1e9 >= 0.5:
+                self.update_cps(clicks)
+                last_update = current_time
+            if (time.perf_counter_ns() - self.start_time) / 1e9 > 3600:
+                self.stop_clicking()
+                messagebox.showwarning("Warning", "Clicking stopped after 1 hour for safety.")
+                break
+
+        self.update_cps(clicks)
         self.stop_clicking()
+
+    def update_cps(self, clicks):
+        elapsed = (time.perf_counter_ns() - self.start_time) / 1e9
+        cps = clicks / elapsed if elapsed > 0 else 0.0
+        self.cps_label.configure(text=f"CPS: {cps:.1f}")
+        self.status_label.configure(text=f"Status: Clicking at {clicks} clicks")
 
     def start_clicking(self):
         if self.running: return
@@ -239,6 +259,7 @@ class AutoClickerApp(ctk.CTk):
         self.start_btn.configure(state='disabled')
         self.stop_btn.configure(state='normal')
         self.title("Clicking - Auto Clicker (Python)")
+        self.status_label.configure(text="Status: Starting...")
         threading.Thread(target=self.perform_clicks, daemon=True).start()
 
     def stop_clicking(self):
@@ -246,15 +267,15 @@ class AutoClickerApp(ctk.CTk):
         self.start_btn.configure(state='normal')
         self.stop_btn.configure(state='disabled')
         self.title("Stopped - Auto Clicker (Python)")
+        self.status_label.configure(text="Status: Idle")
         self.cps_label.configure(text="CPS: 0.0")
 
     def set_hotkey(self):
-        # Modal dialog for hotkey setting
         dialog = ctk.CTkToplevel(self)
         dialog.title("Hotkey Setting")
         dialog.geometry("350x180")
         dialog.resizable(False, False)
-        dialog.grab_set()  # Make modal
+        dialog.grab_set()
 
         ctk.CTkLabel(dialog, text="Hotkey Setting", font=("Segoe UI", 13, "bold")).pack(pady=(15, 5))
 
@@ -267,7 +288,6 @@ class AutoClickerApp(ctk.CTk):
         hotkey_entry = ctk.CTkEntry(frame, width=60, textvariable=hotkey_var, font=("Segoe UI", 13), justify="center", state="readonly")
         hotkey_entry.pack(side="left", padx=10)
 
-        # Listen for key press
         def on_key(event):
             key = event.name.upper()
             hotkey_var.set(key)
@@ -281,7 +301,6 @@ class AutoClickerApp(ctk.CTk):
             self.start_btn.configure(text=f"Start ({self.hotkey.upper()})")
             self.stop_btn.configure(text=f"Stop ({self.hotkey.upper()})")
             self.save_hotkey()
-            # Restart hotkey listener
             self.listener_should_restart = True
             if self.listener_thread and self.listener_thread.is_alive():
                 self.listener_thread.join(timeout=1)
@@ -316,22 +335,20 @@ class AutoClickerApp(ctk.CTk):
         ctk.CTkMessagebox(title="Not implemented", message="Record & Playback is not implemented yet.")
 
     def _update_repeat_entry(self):
-        if hasattr(self, 'repeat_var') and hasattr(self, 'repeat_times'):
-            if self.repeat_var.get() == "Repeat":
-                self.repeat_times.configure(state='normal')
-            else:
-                self.repeat_times.configure(state='disabled')
+        if self.repeat_var.get() == "Repeat":
+            self.repeat_times.configure(state='normal')
+        else:
+            self.repeat_times.configure(state='disabled')
 
     def _update_position_entry(self):
-        if hasattr(self, 'position_var') and hasattr(self, 'x_entry') and hasattr(self, 'y_entry'):
-            if self.position_var.get() == "Pick location":
-                self.x_entry.configure(state='normal')
-                self.y_entry.configure(state='normal')
-                self.pick_btn.configure(state='normal')
-            else:
-                self.x_entry.configure(state='disabled')
-                self.y_entry.configure(state='disabled')
-                self.pick_btn.configure(state='disabled')
+        if self.position_var.get() == "Pick location":
+            self.x_entry.configure(state='normal')
+            self.y_entry.configure(state='normal')
+            self.pick_btn.configure(state='normal')
+        else:
+            self.x_entry.configure(state='disabled')
+            self.y_entry.configure(state='disabled')
+            self.pick_btn.configure(state='disabled')
 
 if __name__ == '__main__':
     app = AutoClickerApp()
