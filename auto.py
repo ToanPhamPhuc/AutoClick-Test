@@ -18,7 +18,10 @@ class AutoClickerApp(ctk.CTk):
             if os.path.exists("settings.json"):
                 with open("settings.json", "r") as f:
                     data = json.load(f)
-                    return data.get("hotkey", "f6")
+                    hotkey = data.get("hotkey", "f6")
+                    if not hotkey:
+                        return "f6"
+                    return hotkey
         except Exception as e:
             messagebox.showerror("Error", f"Failed to load hotkey settings: {e}")
             return "f6"
@@ -38,12 +41,12 @@ class AutoClickerApp(ctk.CTk):
         self.resizable(False, False)
 
         self.running = False
-        self.hotkey = self.load_hotkey()
+        self.hotkey = self.load_hotkey() or "f6"
         self.listener_should_restart = False
         self.listener_thread = None
         self.start_time = 0
 
-        self._build_ui()
+        self._build_ui() #TODO
         self.listener_thread = threading.Thread(target=self.hotkey_listener, daemon=True)
         self.listener_thread.start()
 
@@ -139,7 +142,7 @@ class AutoClickerApp(ctk.CTk):
         # === Buttons ===
         button_frame = ctk.CTkFrame(main_frame)
         button_frame.pack(pady=10)
-        self.start_btn = ctk.CTkButton(button_frame, text=f"Start ({self.hotkey.upper()})", command=self.start_clicking, font=("Segoe UI", 11))
+        self.start_btn = ctk.CTkButton(button_frame, text=f"Start ({(self.hotkey or 'f6').upper()})", command=self.start_clicking, font=("Segoe UI", 11))
         self.stop_btn = ctk.CTkButton(button_frame, text=f"Stop ({self.hotkey.upper()})", command=self.stop_clicking, state='disabled', font=("Segoe UI", 11))
         self.hotkey_btn = ctk.CTkButton(button_frame, text="Hotkey setting", command=self.set_hotkey, font=("Segoe UI", 11))
         self.record_btn = ctk.CTkButton(button_frame, text="Record & Playback", command=self.fake_record, font=("Segoe UI", 11))
@@ -354,5 +357,5 @@ class AutoClickerApp(ctk.CTk):
             self.pick_btn.configure(state='disabled')
 
 if __name__ == '__main__':
-    app = AutoClickerApp()
+    app = AutoClickerApp() #TODO
     app.mainloop()
