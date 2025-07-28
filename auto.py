@@ -277,11 +277,16 @@ class AutoClickerApp(ctk.CTk):
         self.cps_label.configure(text="CPS: 0.0")
 
     def set_hotkey(self):
+        # Remove topmost from main window
+        self.attributes('-topmost', False)
+
         dialog = ctk.CTkToplevel(self)
         dialog.title("Hotkey Setting")
         dialog.geometry("350x180")
         dialog.resizable(False, False)
         dialog.grab_set()
+        dialog.attributes('-topmost', True)
+        dialog.focus_force()
 
         ctk.CTkLabel(dialog, text="Hotkey Setting", font=("Segoe UI", 13, "bold")).pack(pady=(15, 5))
 
@@ -314,10 +319,12 @@ class AutoClickerApp(ctk.CTk):
             self.listener_thread = threading.Thread(target=self.hotkey_listener, daemon=True)
             self.listener_thread.start()
             dialog.destroy()
+            self.attributes('-topmost', True)  # Restore topmost to main window
 
         def on_cancel():
             keyboard.unhook(keyboard_hook)
             dialog.destroy()
+            self.attributes('-topmost', True)  # Restore topmost to main window
 
         btn_frame = ctk.CTkFrame(dialog)
         btn_frame.pack(pady=10)
