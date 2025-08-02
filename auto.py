@@ -8,6 +8,7 @@ import json
 import os
 from tkinter import messagebox
 from pynput.mouse import Button, Controller
+from pynput import keyboard as pynput_keyboard
 
 ctk.set_appearance_mode("System")
 ctk.set_default_color_theme("blue")
@@ -77,7 +78,7 @@ class AutoClickerApp(ctk.CTk):
         self.hours.insert(0, "0")
         self.mins.insert(0, "0")
         self.secs.insert(0, "0")
-        self.ms.insert(0, "9")
+        self.ms.insert(0, "1")
         self.hours.pack(side='left', padx=(5, 2))
         ctk.CTkLabel(row1, text="hours", font=("Segoe UI", 11)).pack(side='left')
         self.mins.pack(side='left', padx=(10, 2))
@@ -189,7 +190,7 @@ class AutoClickerApp(ctk.CTk):
 
     def pick_location(self):
         self.iconify()
-        print("Click anywhere to pick location, or press ESC to cancel...")
+        print("Click anywhere to pick location, or press any key to cancel...")
 
         def restore_window():
             self.deiconify()
@@ -211,14 +212,14 @@ class AutoClickerApp(ctk.CTk):
                 mouse.unhook_all()
                 restore_window()
 
-        def on_esc(e):
-            if e.name == 'esc':
-                mouse.unhook_all()
-                restore_window()
+        def timeout_restore():
+            # Restore window after 10 seconds if no click
+            mouse.unhook_all()
+            restore_window()
 
         mouse.hook(on_click)
-        # Don't suppress ESC key - let it pass through to other applications
-        keyboard_hook = keyboard.on_press(on_esc, suppress=False)
+        # Set a timeout to restore window automatically
+        self.after(10000, timeout_restore)  # 10 second timeout
 
     def perform_clicks(self):
         interval = self.get_interval()
@@ -300,14 +301,23 @@ class AutoClickerApp(ctk.CTk):
         hotkey_entry = ctk.CTkEntry(frame, width=60, textvariable=hotkey_var, font=("Segoe UI", 13), justify="center", state="readonly")
         hotkey_entry.pack(side="left", padx=10)
 
-        def on_key(event):
-            key = event.name.upper()
-            hotkey_var.set(key)
+        def on_key(key):
+            try:
+                if hasattr(key, 'char'):
+                    key_name = key.char.upper()
+                elif hasattr(key, 'name'):
+                    key_name = key.name.upper()
+                else:
+                    return
+                hotkey_var.set(key_name)
+            except AttributeError:
+                pass
 
-        keyboard_hook = keyboard.on_press(on_key, suppress=False)
+        keyboard_hook = pynput_keyboard.Listener(on_press=on_key)
+        keyboard_hook.start()
 
         def on_ok():
-            keyboard.unhook(keyboard_hook)
+            keyboard_hook.stop()
             self.hotkey = hotkey_var.get().lower()
             self.hotkey_label.configure(text=f"Hotkey: {self.hotkey.upper()}")
             self.start_btn.configure(text=f"Start ({self.hotkey.upper()})")
@@ -324,7 +334,7 @@ class AutoClickerApp(ctk.CTk):
             self.attributes('-topmost', True)  # Restore topmost to main window
 
         def on_cancel():
-            keyboard.unhook(keyboard_hook)
+            keyboard_hook.stop()
             dialog.destroy()
             self.attributes('-topmost', True)  # Restore topmost to main window
 
@@ -338,24 +348,37 @@ class AutoClickerApp(ctk.CTk):
     def hotkey_listener(self):
         last_press_time = 0
         
-        def on_hotkey(event):
+        def on_hotkey(key):
             nonlocal last_press_time
-            if event.name == self.hotkey and event.event_type == 'down':
-                current_time = time.time()
-                # Prevent double-triggering within 0.2 seconds
-                if current_time - last_press_time > 0.2:
-                    last_press_time = current_time
-                    if self.running:
-                        self.stop_clicking()
-                    else:
-                        self.start_clicking()
+            try:
+                if hasattr(key, 'char') and key.char == self.hotkey:
+                    current_time = time.time()
+                    # Prevent double-triggering within 0.2 seconds
+                    if current_time - last_press_time > 0.2:
+                        last_press_time = current_time
+                        if self.running:
+                            self.stop_clicking()
+                        else:
+                            self.start_clicking()
+                elif hasattr(key, 'name') and key.name == self.hotkey:
+                    current_time = time.time()
+                    # Prevent double-triggering within 0.2 seconds
+                    if current_time - last_press_time > 0.2:
+                        last_press_time = current_time
+                        if self.running:
+                            self.stop_clicking()
+                        else:
+                            self.start_clicking()
+            except AttributeError:
+                pass
         
-        # Use non-blocking keyboard listener that doesn't suppress keys
-        keyboard_hook = keyboard.on_press(on_hotkey, suppress=False)
+        # Use pynput keyboard listener that doesn't suppress keys
+        keyboard_hook = pynput_keyboard.Listener(on_press=on_hotkey)
+        keyboard_hook.start()
         
         while True:
             if self.listener_should_restart:
-                keyboard.unhook(keyboard_hook)
+                keyboard_hook.stop()
                 self.listener_should_restart = False
                 break
             time.sleep(0.1)  # Small sleep to prevent high CPU usage
