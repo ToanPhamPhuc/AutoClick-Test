@@ -217,7 +217,8 @@ class AutoClickerApp(ctk.CTk):
                 restore_window()
 
         mouse.hook(on_click)
-        keyboard.on_press(on_esc)
+        # Don't suppress ESC key - let it pass through to other applications
+        keyboard_hook = keyboard.on_press(on_esc, suppress=False)
 
     def perform_clicks(self):
         interval = self.get_interval()
@@ -312,6 +313,7 @@ class AutoClickerApp(ctk.CTk):
             self.start_btn.configure(text=f"Start ({self.hotkey.upper()})")
             self.stop_btn.configure(text=f"Stop ({self.hotkey.upper()})")
             self.save_hotkey()
+            # Restart the hotkey listener with new hotkey
             self.listener_should_restart = True
             if self.listener_thread and self.listener_thread.is_alive():
                 self.listener_thread.join(timeout=1)
@@ -334,15 +336,29 @@ class AutoClickerApp(ctk.CTk):
         dialog.protocol("WM_DELETE_WINDOW", on_cancel)
 
     def hotkey_listener(self):
+        last_press_time = 0
+        
+        def on_hotkey(event):
+            nonlocal last_press_time
+            if event.name == self.hotkey and event.event_type == 'down':
+                current_time = time.time()
+                # Prevent double-triggering within 0.2 seconds
+                if current_time - last_press_time > 0.2:
+                    last_press_time = current_time
+                    if self.running:
+                        self.stop_clicking()
+                    else:
+                        self.start_clicking()
+        
+        # Use non-blocking keyboard listener that doesn't suppress keys
+        keyboard_hook = keyboard.on_press(on_hotkey, suppress=False)
+        
         while True:
-            keyboard.wait(self.hotkey)
             if self.listener_should_restart:
+                keyboard.unhook(keyboard_hook)
                 self.listener_should_restart = False
                 break
-            if self.running:
-                self.stop_clicking()
-            else:
-                self.start_clicking()
+            time.sleep(0.1)  # Small sleep to prevent high CPU usage
 
     def fake_record(self):
         ctk.CTkMessagebox(title="Not implemented", message="Record & Playback is not implemented yet.")
