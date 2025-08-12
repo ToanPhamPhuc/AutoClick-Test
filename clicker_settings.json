@@ -1,0 +1,53 @@
+{
+    "hotkey": "f6",
+    "clickers": [
+        {
+            "id": 1,
+            "x": "0",
+            "y": "0",
+            "click_type": "Left",
+            "interval": "",
+            "stop_condition": "Time",
+            "stop_time": "",
+            "running": false,
+            "start_time": 0,
+            "clicks": 0
+        },
+        {
+            "id": 2,
+            "x": "",
+            "y": "",
+            "click_type": "Left",
+            "interval": "",
+            "stop_condition": "None",
+            "stop_time": "",
+            "running": false,
+            "start_time": 0,
+            "clicks": 0
+        },
+        {
+            "id": 3,
+            "x": "",
+            "y": "",
+            "click_type": "Left",
+            "interval": "",
+            "stop_condition": "None",
+            "stop_time": "",
+            "running": false,
+            "start_time": 0,
+            "clicks": 0
+        },
+        {
+            "id": 4,
+            "x": "",
+            "y": "",
+            "click_type": "Left",
+            "interval": "",
+            "stop_condition": "None",
+            "stop_time": "",
+            "running": false,
+            "start_time": 0,
+            "clicks": 0
+        }
+    ]
+}
