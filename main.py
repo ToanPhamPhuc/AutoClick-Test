@@ -6,7 +6,7 @@ import keyboard
 import mouse
 import json
 import os
-from tkinter import messagebox
+from tkinter import messagebox, ttk
 from pynput.mouse import Button, Controller
 from pynput import keyboard as pynput_keyboard
 
@@ -18,7 +18,7 @@ class MultiAutoClickerApp(ctk.CTk):
         super().__init__()
         self.title("Multi Auto Clicker (Python)")
         self.attributes('-topmost', True)
-        self.geometry("800x700")
+        self.geometry("1000x700")
         self.resizable(True, True)
 
         self.clickers = []
@@ -52,9 +52,25 @@ class MultiAutoClickerApp(ctk.CTk):
                                font=("Segoe UI", 12), height=35)
         add_btn.pack(pady=(0, 10))
 
-        # Scrollable frame for clickers
-        self.scrollable_frame = ctk.CTkScrollableFrame(main_frame, height=500)
-        self.scrollable_frame.pack(fill='both', expand=True, padx=(0, 5))
+        # Create table frame
+        table_frame = ctk.CTkFrame(main_frame)
+        table_frame.pack(fill='both', expand=True, pady=(0, 10))
+
+        # Table header
+        header_frame = ctk.CTkFrame(table_frame)
+        header_frame.pack(fill='x', padx=5, pady=5)
+        
+        # Header labels
+        headers = ["ID", "X", "Y", "L/R", "Interval (ms)", "Stop After", "Status", "Actions"]
+        header_widths = [50, 60, 60, 60, 100, 120, 100, 200]
+        
+        for i, (header, width) in enumerate(zip(headers, header_widths)):
+            label = ctk.CTkLabel(header_frame, text=header, font=("Segoe UI", 11, "bold"), width=width)
+            label.pack(side='left', padx=2)
+
+        # Scrollable frame for clicker rows
+        self.scrollable_frame = ctk.CTkScrollableFrame(table_frame, height=400)
+        self.scrollable_frame.pack(fill='both', expand=True, padx=5, pady=(0, 5))
 
         # Global controls
         global_frame = ctk.CTkFrame(main_frame, border_width=1, border_color="#cccccc")
@@ -73,12 +89,12 @@ class MultiAutoClickerApp(ctk.CTk):
         self.hotkey_btn.pack(side='left', padx=(0, 20))
         
         # Global start/stop all
-        self.start_all_btn = ctk.CTkButton(global_controls, text="Start All", command=self.start_all_clickers, 
-                                          font=("Segoe UI", 11), width=80)
+        self.start_all_btn = ctk.CTkButton(global_controls, text=f"Start All ({self.hotkey.upper()})", command=self.start_all_clickers, 
+                                          font=("Segoe UI", 11), width=120)
         self.start_all_btn.pack(side='left', padx=(0, 10))
         
-        self.stop_all_btn = ctk.CTkButton(global_controls, text="Stop All", command=self.stop_all_clickers, 
-                                         font=("Segoe UI", 11), width=80)
+        self.stop_all_btn = ctk.CTkButton(global_controls, text=f"Stop All ({self.hotkey.upper()})", command=self.stop_all_clickers, 
+                                         font=("Segoe UI", 11), width=120)
         self.stop_all_btn.pack(side='left', padx=(0, 10))
         
         # Status
@@ -92,175 +108,81 @@ class MultiAutoClickerApp(ctk.CTk):
         clicker_id = self.next_id
         self.next_id += 1
         
-        clicker_frame = ctk.CTkFrame(self.scrollable_frame, border_width=2, border_color="#cccccc")
-        clicker_frame.pack(fill='x', pady=5, padx=5)
+        # Create clicker row frame
+        row_frame = ctk.CTkFrame(self.scrollable_frame, height=40)
+        row_frame.pack(fill='x', pady=2, padx=5)
         
-        # Clicker header
-        header_frame = ctk.CTkFrame(clicker_frame)
-        header_frame.pack(fill='x', padx=5, pady=5)
+        # ID column
+        id_label = ctk.CTkLabel(row_frame, text=str(clicker_id), font=("Segoe UI", 11), width=50)
+        id_label.pack(side='left', padx=2)
         
-        ctk.CTkLabel(header_frame, text=f"Clicker #{clicker_id}", font=("Segoe UI", 12, "bold")).pack(side='left')
-        
-        remove_btn = ctk.CTkButton(header_frame, text="Remove", command=lambda: self.remove_clicker(clicker_frame, clicker_id), 
-                                  font=("Segoe UI", 10), width=70, height=25)
-        remove_btn.pack(side='right')
-        
-        # Clicker content
-        content_frame = ctk.CTkFrame(clicker_frame)
-        content_frame.pack(fill='x', padx=5, pady=(0, 5))
-        
-        vcmd = (self.register(self.only_int), '%P')
-        
-        # Click interval
-        interval_frame = ctk.CTkFrame(content_frame)
-        interval_frame.pack(fill='x', pady=5)
-        ctk.CTkLabel(interval_frame, text="Click interval:", font=("Segoe UI", 11)).pack(anchor='w', padx=10, pady=(5, 0))
-        
-        interval_inputs = ctk.CTkFrame(interval_frame)
-        interval_inputs.pack(padx=10, pady=5)
-        
-        hours = ctk.CTkEntry(interval_inputs, width=50, font=("Segoe UI", 11), validate='key', validatecommand=vcmd)
-        mins = ctk.CTkEntry(interval_inputs, width=50, font=("Segoe UI", 11), validate='key', validatecommand=vcmd)
-        secs = ctk.CTkEntry(interval_inputs, width=50, font=("Segoe UI", 11), validate='key', validatecommand=vcmd)
-        ms = ctk.CTkEntry(interval_inputs, width=80, font=("Segoe UI", 11), validate='key', validatecommand=vcmd)
-        
-        hours.insert(0, "0")
-        mins.insert(0, "0")
-        secs.insert(0, "0")
-        ms.insert(0, "1")
-        
-        hours.pack(side='left', padx=(5, 2))
-        ctk.CTkLabel(interval_inputs, text="h", font=("Segoe UI", 11)).pack(side='left')
-        mins.pack(side='left', padx=(10, 2))
-        ctk.CTkLabel(interval_inputs, text="m", font=("Segoe UI", 11)).pack(side='left')
-        secs.pack(side='left', padx=(10, 2))
-        ctk.CTkLabel(interval_inputs, text="s", font=("Segoe UI", 11)).pack(side='left')
-        ms.pack(side='left', padx=(10, 2))
-        ctk.CTkLabel(interval_inputs, text="ms", font=("Segoe UI", 11)).pack(side='left')
-        
-        # Click options
-        options_frame = ctk.CTkFrame(content_frame)
-        options_frame.pack(fill='x', pady=5)
-        ctk.CTkLabel(options_frame, text="Click options:", font=("Segoe UI", 11)).pack(anchor='w', padx=10, pady=(5, 0))
-        
-        options_inputs = ctk.CTkFrame(options_frame)
-        options_inputs.pack(padx=10, pady=5, fill='x')
-        
-        ctk.CTkLabel(options_inputs, text="Button:", font=("Segoe UI", 11)).pack(side='left', padx=(0, 5))
-        mouse_button = ctk.CTkOptionMenu(options_inputs, values=["Left", "Right", "Middle"], width=80, font=("Segoe UI", 11))
-        mouse_button.set("Left")
-        mouse_button.pack(side='left', padx=(0, 20))
-        
-        ctk.CTkLabel(options_inputs, text="Type:", font=("Segoe UI", 11)).pack(side='left', padx=(0, 5))
-        click_type = ctk.CTkOptionMenu(options_inputs, values=["Single", "Double"], width=80, font=("Segoe UI", 11))
-        click_type.set("Single")
-        click_type.pack(side='left')
-        
-        # Stop after time
-        time_frame = ctk.CTkFrame(content_frame)
-        time_frame.pack(fill='x', pady=5)
-        
-        # Dynamic label that changes based on selection
-        time_label = ctk.CTkLabel(time_frame, text="Stop clicking after:", font=("Segoe UI", 11))
-        time_label.pack(anchor='w', padx=10, pady=(5, 0))
-        
-        # Radio buttons for stop condition
-        stop_radio_frame = ctk.CTkFrame(time_frame)
-        stop_radio_frame.pack(padx=10, pady=5, fill='x')
-        
-        stop_condition_var = ctk.StringVar(value="Stop after time")
-        
-        def update_time_label():
-            if stop_condition_var.get() == "Click forever":
-                time_label.configure(text="Clicking forever (no time limit)")
-            else:
-                time_label.configure(text="Stop clicking after:")
-        
-        stop_time_radio = ctk.CTkRadioButton(stop_radio_frame, text="Stop after time", variable=stop_condition_var, 
-                                            value="Stop after time", font=("Segoe UI", 11), 
-                                            command=lambda: self._update_stop_time_entry(stop_hours, stop_mins, stop_secs, stop_condition_var, update_time_label))
-        stop_time_radio.pack(side='left', padx=(0, 10))
-        
-        stop_forever_radio = ctk.CTkRadioButton(stop_radio_frame, text="Click forever", variable=stop_condition_var, 
-                                               value="Click forever", font=("Segoe UI", 11), 
-                                               command=lambda: self._update_stop_time_entry(stop_hours, stop_mins, stop_secs, stop_condition_var, update_time_label))
-        stop_forever_radio.pack(side='left', padx=(0, 10))
-        
-        time_inputs = ctk.CTkFrame(time_frame)
-        time_inputs.pack(padx=10, pady=5)
-        
-        stop_hours = ctk.CTkEntry(time_inputs, width=50, font=("Segoe UI", 11), validate='key', validatecommand=vcmd)
-        stop_mins = ctk.CTkEntry(time_inputs, width=50, font=("Segoe UI", 11), validate='key', validatecommand=vcmd)
-        stop_secs = ctk.CTkEntry(time_inputs, width=50, font=("Segoe UI", 11), validate='key', validatecommand=vcmd)
-        
-        stop_hours.insert(0, "0")
-        stop_mins.insert(0, "0")
-        stop_secs.insert(0, "3600")  # Default 1 hour
-        
-        stop_hours.pack(side='left', padx=(5, 2))
-        ctk.CTkLabel(time_inputs, text="hours", font=("Segoe UI", 11)).pack(side='left')
-        stop_mins.pack(side='left', padx=(10, 2))
-        ctk.CTkLabel(time_inputs, text="mins", font=("Segoe UI", 11)).pack(side='left')
-        stop_secs.pack(side='left', padx=(10, 2))
-        ctk.CTkLabel(time_inputs, text="secs", font=("Segoe UI", 11)).pack(side='left')
-        
-        # Initialize the stop time entry state
-        self._update_stop_time_entry(stop_hours, stop_mins, stop_secs, stop_condition_var, update_time_label)
-        
-        # Cursor position
-        position_frame = ctk.CTkFrame(content_frame)
-        position_frame.pack(fill='x', pady=5)
-        ctk.CTkLabel(position_frame, text="Cursor position:", font=("Segoe UI", 11)).pack(anchor='w', padx=10, pady=(5, 0))
-        
-        pos_inputs = ctk.CTkFrame(position_frame)
-        pos_inputs.pack(padx=10, pady=5, fill='x')
-        
-        position_var = ctk.StringVar(value="Current location")
-        pos_radio1 = ctk.CTkRadioButton(pos_inputs, text="Current location", variable=position_var, value="Current location", 
-                                       font=("Segoe UI", 11), command=lambda: self._update_position_entry(x_entry, y_entry, pick_btn))
-        pos_radio1.pack(side='left', padx=(0, 10))
-        
-        pos_radio2 = ctk.CTkRadioButton(pos_inputs, text="Pick location", variable=position_var, value="Pick location", 
-                                       font=("Segoe UI", 11), command=lambda: self._update_position_entry(x_entry, y_entry, pick_btn))
-        pos_radio2.pack(side='left', padx=(0, 10))
-        
-        x_entry = ctk.CTkEntry(pos_inputs, width=60, font=("Segoe UI", 11), validate='key', validatecommand=vcmd)
-        y_entry = ctk.CTkEntry(pos_inputs, width=60, font=("Segoe UI", 11), validate='key', validatecommand=vcmd)
+        # X coordinate
+        x_entry = ctk.CTkEntry(row_frame, width=60, font=("Segoe UI", 11), placeholder_text="X")
         x_entry.insert(0, "0")
+        x_entry.pack(side='left', padx=2)
+        
+        # Y coordinate
+        y_entry = ctk.CTkEntry(row_frame, width=60, font=("Segoe UI", 11), placeholder_text="Y")
         y_entry.insert(0, "0")
-        x_entry.pack(side='left', padx=(0, 5))
-        y_entry.pack(side='left', padx=(0, 5))
+        y_entry.pack(side='left', padx=2)
         
-        pick_btn = ctk.CTkButton(pos_inputs, text="Pick location", 
-                                command=lambda: self.pick_location(x_entry, y_entry), font=("Segoe UI", 11))
-        pick_btn.pack(side='left', padx=(0, 5))
+        # L/R click type
+        click_type = ctk.CTkOptionMenu(row_frame, values=["Left", "Right"], width=60, font=("Segoe UI", 11))
+        click_type.set("Left")
+        click_type.pack(side='left', padx=2)
         
-        self._update_position_entry(x_entry, y_entry, pick_btn)
+        # Interval in milliseconds
+        interval_entry = ctk.CTkEntry(row_frame, width=100, font=("Segoe UI", 11), placeholder_text="1000")
+        interval_entry.insert(0, "1000")
+        interval_entry.pack(side='left', padx=2)
         
-        # Control buttons
-        control_frame = ctk.CTkFrame(content_frame)
-        control_frame.pack(fill='x', pady=5)
+        # Stop after (time or forever)
+        stop_frame = ctk.CTkFrame(row_frame, fg_color="transparent")
+        stop_frame.pack(side='left', padx=2)
         
-        start_btn = ctk.CTkButton(control_frame, text="Start", 
-                                 command=lambda: self.start_clicker(clicker_id, hours, mins, secs, ms, mouse_button, 
-                                                                  click_type, stop_hours, stop_mins, stop_secs, 
-                                                                  position_var, x_entry, y_entry, start_btn, stop_btn, status_label, stop_condition_var), 
-                                 font=("Segoe UI", 11), width=80)
-        start_btn.pack(side='left', padx=(0, 10))
+        stop_condition_var = ctk.StringVar(value="Time")
+        stop_time_radio = ctk.CTkRadioButton(stop_frame, text="Time", variable=stop_condition_var, 
+                                            value="Time", font=("Segoe UI", 9))
+        stop_time_radio.pack(side='left')
         
-        stop_btn = ctk.CTkButton(control_frame, text="Stop", 
-                                command=lambda: self.stop_clicker(clicker_id, start_btn, stop_btn, status_label), 
-                                font=("Segoe UI", 11), width=80, state='disabled')
-        stop_btn.pack(side='left', padx=(0, 10))
+        stop_forever_radio = ctk.CTkRadioButton(stop_frame, text="Forever", variable=stop_condition_var, 
+                                               value="Forever", font=("Segoe UI", 9))
+        stop_forever_radio.pack(side='left')
+        
+        # Stop time entry (only visible when "Time" is selected)
+        stop_time_entry = ctk.CTkEntry(stop_frame, width=60, font=("Segoe UI", 9), placeholder_text="3600")
+        stop_time_entry.insert(0, "3600")
+        stop_time_entry.pack(side='left', padx=(5, 0))
         
         # Status
-        status_label = ctk.CTkLabel(control_frame, text="Status: Idle", font=("Segoe UI", 11))
-        status_label.pack(side='left', padx=(20, 0))
+        status_label = ctk.CTkLabel(row_frame, text="Idle", font=("Segoe UI", 11), width=100)
+        status_label.pack(side='left', padx=2)
+        
+        # Actions
+        actions_frame = ctk.CTkFrame(row_frame, fg_color="transparent")
+        actions_frame.pack(side='left', padx=2)
+        
+        start_btn = ctk.CTkButton(actions_frame, text="Start", command=lambda: self.start_clicker(clicker_id), 
+                                 font=("Segoe UI", 10), width=60, height=25)
+        start_btn.pack(side='left', padx=2)
+        
+        stop_btn = ctk.CTkButton(actions_frame, text="Stop", command=lambda: self.stop_clicker(clicker_id), 
+                                font=("Segoe UI", 10), width=60, height=25, state='disabled')
+        stop_btn.pack(side='left', padx=2)
+        
+        remove_btn = ctk.CTkButton(actions_frame, text="Remove", command=lambda: self.remove_clicker(clicker_id), 
+                                  font=("Segoe UI", 10), width=60, height=25)
+        remove_btn.pack(side='left', padx=2)
+        
+        # Pick location button
+        pick_btn = ctk.CTkButton(actions_frame, text="Pick", command=lambda: self.pick_location(x_entry, y_entry), 
+                                font=("Segoe UI", 10), width=50, height=25)
+        pick_btn.pack(side='left', padx=2)
         
         # Store clicker data
         clicker_data = {
             'id': clicker_id,
-            'frame': clicker_frame,
+            'row_frame': row_frame,
             'running': False,
             'thread': None,
             'start_time': 0,
@@ -269,51 +191,38 @@ class MultiAutoClickerApp(ctk.CTk):
             'start_btn': start_btn,
             'stop_btn': stop_btn,
             'status_label': status_label,
-            'position_var': position_var,
             'x_entry': x_entry,
             'y_entry': y_entry,
-            'stop_condition_var': stop_condition_var,
-            'hours': hours,
-            'mins': mins,
-            'secs': secs,
-            'ms': ms,
-            'mouse_button': mouse_button,
             'click_type': click_type,
-            'stop_hours': stop_hours,
-            'stop_mins': stop_mins,
-            'stop_secs': stop_secs
+            'interval_entry': interval_entry,
+            'stop_condition_var': stop_condition_var,
+            'stop_time_entry': stop_time_entry
         }
         
         self.clickers.append(clicker_data)
-
-    def remove_clicker(self, frame, clicker_id):
-        # Stop the clicker if running
-        for clicker in self.clickers:
-            if clicker['id'] == clicker_id and clicker['running']:
-                self.stop_clicker(clicker_id, clicker['start_btn'], clicker['stop_btn'], clicker['status_label'])
         
-        # Remove from list and destroy frame
-        self.clickers = [c for c in self.clickers if c['id'] != clicker_id]
-        frame.destroy()
+        # Update radio button commands to handle stop time entry visibility
+        def update_stop_time_visibility():
+            if stop_condition_var.get() == "Forever":
+                stop_time_entry.configure(state='disabled')
+            else:
+                stop_time_entry.configure(state='normal')
+        
+        stop_time_radio.configure(command=update_stop_time_visibility)
+        stop_forever_radio.configure(command=update_stop_time_visibility)
+        update_stop_time_visibility()
+
+    def remove_clicker(self, clicker_id):
+        # Find and remove the clicker
+        for i, clicker in enumerate(self.clickers):
+            if clicker['id'] == clicker_id:
+                if clicker['running']:
+                    self.stop_clicker(clicker_id)
+                clicker['row_frame'].destroy()
+                self.clickers.pop(i)
+                break
         
         self.update_global_status()
-
-    def _update_position_entry(self, x_entry, y_entry, pick_btn):
-        # This will be handled by the individual clicker instances
-        pass
-
-    def _update_stop_time_entry(self, stop_hours, stop_mins, stop_secs, stop_condition_var, update_label_func):
-        # This method is called by the radio buttons to enable/disable the stop time entry
-        if stop_condition_var.get() == "Click forever":
-            stop_hours.configure(state='disabled')
-            stop_mins.configure(state='disabled')
-            stop_secs.configure(state='disabled')
-            update_label_func() # Update the label text
-        else:
-            stop_hours.configure(state='normal')
-            stop_mins.configure(state='normal')
-            stop_secs.configure(state='normal')
-            update_label_func() # Update the label text
 
     def pick_location(self, x_entry, y_entry):
         self.iconify()
@@ -329,8 +238,6 @@ class MultiAutoClickerApp(ctk.CTk):
         def on_click(event):
             if hasattr(event, 'event_type') and event.event_type == 'down':
                 x, y = mouse.get_position()
-                x_entry.configure(state='normal')
-                y_entry.configure(state='normal')
                 x_entry.delete(0, 'end')
                 y_entry.delete(0, 'end')
                 x_entry.insert(0, str(x))
@@ -345,102 +252,7 @@ class MultiAutoClickerApp(ctk.CTk):
         mouse.hook(on_click)
         self.after(10000, timeout_restore)
 
-    def get_interval(self, hours, mins, secs, ms):
-        try:
-            h = int(hours.get() or 0)
-            m = int(mins.get() or 0)
-            s = int(secs.get() or 0)
-            milliseconds = int(ms.get() or 0)
-            if h < 0 or m < 0 or s < 0 or milliseconds < 0:
-                return 0.1
-            total_ms = h * 3600 * 1000 + m * 60 * 1000 + s * 1000 + milliseconds
-            return max(total_ms / 1000, 0.002)
-        except ValueError:
-            return 0.1
-
-    def get_stop_time(self, hours, mins, secs):
-        try:
-            h = int(hours.get() or 0)
-            m = int(mins.get() or 0)
-            s = int(secs.get() or 0)
-            if h < 0 or m < 0 or s < 0:
-                return 3600  # Default 1 hour
-            return h * 3600 + m * 60 + s
-        except ValueError:
-            return 3600
-
-    def get_position(self, position_var, x_entry, y_entry):
-        if position_var.get() == "Pick location":
-            try:
-                x = int(x_entry.get() or 0)
-                y = int(y_entry.get() or 0)
-                return (x, y)
-            except ValueError:
-                return None
-        return None
-
-    def perform_clicks(self, clicker_id, hours, mins, secs, ms, mouse_button, click_type, 
-                      stop_hours, stop_mins, stop_secs, position_var, x_entry, y_entry, 
-                      start_btn, stop_btn, status_label, stop_condition_var):
-        
-        interval = self.get_interval(hours, mins, secs, ms)
-        button = mouse_button.get()
-        click_type_count = 2 if click_type.get() == "Double" else 1
-        position = self.get_position(position_var, x_entry, y_entry)
-        mouse_controller = Controller()
-
-        # Find clicker data
-        clicker_data = None
-        for clicker in self.clickers:
-            if clicker['id'] == clicker_id:
-                clicker_data = clicker
-                break
-        
-        if not clicker_data:
-            return
-
-        clicker_data['start_time'] = time.time()
-        clicker_data['clicks'] = 0
-        next_time = time.time()
-
-        # Check if we should stop after time or click forever
-        stop_after_time = clicker_data['stop_condition_var'].get() == "Stop after time"
-        if stop_after_time:
-            stop_after = self.get_stop_time(stop_hours, stop_mins, stop_secs)
-            clicker_data['stop_time'] = clicker_data['start_time'] + stop_after
-
-        button_map = {'Left': Button.left, 'Right': Button.right, 'Middle': Button.middle}
-
-        # Main clicking loop
-        while clicker_data['running']:
-            # Check if we should stop due to time limit
-            if stop_after_time and time.time() >= clicker_data['stop_time']:
-                break
-                
-            current_time = time.time()
-            if position:
-                mouse_controller.position = position
-            
-            for _ in range(click_type_count):
-                mouse_controller.click(button_map[button])
-            
-            clicker_data['clicks'] += click_type_count
-            
-            target_time = next_time + interval
-            while time.time() < target_time and clicker_data['running']:
-                time.sleep(0.001)  # Small sleep to prevent high CPU usage
-            next_time = target_time
-
-        # Auto-stop when time is up (only for time-based stopping)
-        if stop_after_time and time.time() >= clicker_data['stop_time']:
-            self.after(0, lambda: self.stop_clicker(clicker_id, start_btn, stop_btn, status_label))
-            stop_after = self.get_stop_time(stop_hours, stop_mins, stop_secs)
-            messagebox.showinfo("Info", f"Clicker #{clicker_id} stopped after {stop_after} seconds")
-
-    def start_clicker(self, clicker_id, hours, mins, secs, ms, mouse_button, click_type, 
-                     stop_hours, stop_mins, stop_secs, position_var, x_entry, y_entry, 
-                     start_btn, stop_btn, status_label, stop_condition_var):
-        
+    def start_clicker(self, clicker_id):
         # Find clicker data
         for clicker in self.clickers:
             if clicker['id'] == clicker_id:
@@ -450,21 +262,19 @@ class MultiAutoClickerApp(ctk.CTk):
                 clicker['running'] = True
                 clicker['thread'] = threading.Thread(
                     target=self.perform_clicks, 
-                    args=(clicker_id, hours, mins, secs, ms, mouse_button, click_type, 
-                          stop_hours, stop_mins, stop_secs, position_var, x_entry, y_entry, 
-                          start_btn, stop_btn, status_label, stop_condition_var),
+                    args=(clicker,),
                     daemon=True
                 )
                 clicker['thread'].start()
                 
-                start_btn.configure(state='disabled')
-                stop_btn.configure(state='normal')
-                status_label.configure(text="Status: Running...")
+                clicker['start_btn'].configure(state='disabled')
+                clicker['stop_btn'].configure(state='normal')
+                clicker['status_label'].configure(text="Running...")
                 break
         
         self.update_global_status()
 
-    def stop_clicker(self, clicker_id, start_btn, stop_btn, status_label):
+    def stop_clicker(self, clicker_id):
         # Find clicker data
         for clicker in self.clickers:
             if clicker['id'] == clicker_id:
@@ -472,34 +282,60 @@ class MultiAutoClickerApp(ctk.CTk):
                 if clicker['thread'] and clicker['thread'].is_alive():
                     clicker['thread'].join(timeout=1)
                 
-                start_btn.configure(state='normal')
-                stop_btn.configure(state='disabled')
-                status_label.configure(text="Status: Idle")
+                clicker['start_btn'].configure(state='normal')
+                clicker['stop_btn'].configure(state='disabled')
+                clicker['status_label'].configure(text="Idle")
                 break
         
         self.update_global_status()
 
+    def perform_clicks(self, clicker):
+        try:
+            x = int(clicker['x_entry'].get() or 0)
+            y = int(clicker['y_entry'].get() or 0)
+            interval_ms = int(clicker['interval_entry'].get() or 1000)
+            click_type = clicker['click_type'].get()
+            stop_condition = clicker['stop_condition_var'].get()
+            stop_time_seconds = int(clicker['stop_time_entry'].get() or 3600)
+            
+            mouse_controller = Controller()
+            button_map = {'Left': Button.left, 'Right': Button.right}
+            
+            clicker['start_time'] = time.time()
+            clicker['clicks'] = 0
+            
+            while clicker['running']:
+                # Check if we should stop due to time limit
+                if stop_condition == "Time" and time.time() >= clicker['start_time'] + stop_time_seconds:
+                    break
+                
+                # Move to position and click
+                mouse_controller.position = (x, y)
+                mouse_controller.click(button_map[click_type])
+                
+                clicker['clicks'] += 1
+                
+                # Wait for next click
+                time.sleep(interval_ms / 1000.0)
+            
+            # Auto-stop when time is up
+            if stop_condition == "Time" and time.time() >= clicker['start_time'] + stop_time_seconds:
+                self.after(0, lambda: self.stop_clicker(clicker['id']))
+                messagebox.showinfo("Info", f"Clicker #{clicker['id']} stopped after {stop_time_seconds} seconds")
+                
+        except Exception as e:
+            messagebox.showerror("Error", f"Error in clicker #{clicker['id']}: {e}")
+            self.after(0, lambda: self.stop_clicker(clicker['id']))
+
     def start_all_clickers(self):
         for clicker in self.clickers:
             if not clicker['running']:
-                # Use the stored references from clicker data
-                self.start_clicker(
-                    clicker['id'],
-                    clicker['hours'], clicker['mins'], clicker['secs'], clicker['ms'],
-                    clicker['mouse_button'], clicker['click_type'],
-                    clicker['stop_hours'], clicker['stop_mins'], clicker['stop_secs'],
-                    clicker['position_var'], clicker['x_entry'], clicker['y_entry'],
-                    clicker['start_btn'], clicker['stop_btn'], clicker['status_label'], 
-                    clicker['stop_condition_var']
-                )
+                self.start_clicker(clicker['id'])
 
     def stop_all_clickers(self):
         for clicker in self.clickers:
             if clicker['running']:
-                self.stop_clicker(
-                    clicker['id'],
-                    clicker['start_btn'], clicker['stop_btn'], clicker['status_label']
-                )
+                self.stop_clicker(clicker['id'])
 
     def update_global_status(self):
         running_count = sum(1 for clicker in self.clickers if clicker['running'])
@@ -553,6 +389,9 @@ class MultiAutoClickerApp(ctk.CTk):
         def on_ok():
             keyboard_hook.stop()
             self.hotkey = hotkey_var.get().lower()
+            # Update the global control button texts
+            self.start_all_btn.configure(text=f"Start All ({self.hotkey.upper()})")
+            self.stop_all_btn.configure(text=f"Stop All ({self.hotkey.upper()})")
             # Restart the hotkey listener with new hotkey
             self.listener_should_restart = True
             if self.listener_thread and self.listener_thread.is_alive():
