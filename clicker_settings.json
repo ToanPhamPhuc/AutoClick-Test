@@ -3,51 +3,27 @@
     "clickers": [
         {
             "id": 1,
-            "x": "0",
-            "y": "0",
+            "x": "470",
+            "y": "482",
             "click_type": "Left",
-            "interval": "",
-            "stop_condition": "Time",
-            "stop_time": "",
+            "interval": "1000",
+            "stop_condition": "Forever",
+            "stop_time": "3600",
             "running": false,
-            "start_time": 0,
-            "clicks": 0
+            "start_time": 1754989686.726545,
+            "clicks": 17
         },
         {
             "id": 2,
-            "x": "",
-            "y": "",
+            "x": "447",
+            "y": "715",
             "click_type": "Left",
-            "interval": "",
-            "stop_condition": "None",
-            "stop_time": "",
+            "interval": "1000",
+            "stop_condition": "Forever",
+            "stop_time": "3600",
             "running": false,
-            "start_time": 0,
-            "clicks": 0
-        },
-        {
-            "id": 3,
-            "x": "",
-            "y": "",
-            "click_type": "Left",
-            "interval": "",
-            "stop_condition": "None",
-            "stop_time": "",
-            "running": false,
-            "start_time": 0,
-            "clicks": 0
-        },
-        {
-            "id": 4,
-            "x": "",
-            "y": "",
-            "click_type": "Left",
-            "interval": "",
-            "stop_condition": "None",
-            "stop_time": "",
-            "running": false,
-            "start_time": 0,
-            "clicks": 0
+            "start_time": 1754989686.7602806,
+            "clicks": 18
         }
     ]
 }

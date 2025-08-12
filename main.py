@@ -255,9 +255,9 @@ class MultiAutoClickerApp(ctk.CTk):
             if hasattr(event, 'event_type') and event.event_type == 'down':
                 x, y = mouse.get_position()
                 x_entry.delete(0, 'end')
-                y_entry.insert(0, str(x))
+                x_entry.insert(0, str(x))  # Update X coordinate
                 y_entry.delete(0, 'end')
-                y_entry.insert(0, str(y))
+                y_entry.insert(0, str(y))  # Update Y coordinate
                 mouse.unhook_all()
                 keyboard.unhook_all()
                 restore_window()
@@ -270,7 +270,6 @@ class MultiAutoClickerApp(ctk.CTk):
         mouse.hook(on_click)
         keyboard.hook(on_key)
         self.after(10000, lambda: [mouse.unhook_all(), keyboard.unhook_all(), restore_window()])
-
     def start_clicker(self, clicker_id):
         for clicker in self.clickers:
             if clicker['id'] == clicker_id:
