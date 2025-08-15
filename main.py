@@ -1,5 +1,4 @@
 import customtkinter as ctk
-import pyautogui
 import threading
 import time
 import keyboard
@@ -338,7 +337,8 @@ class MultiAutoClickerApp(ctk.CTk):
             
             self.after(0, lambda: self.stop_clicker(clicker['id']))
             if stop_condition == "Time":
-                self.after(0, lambda: messagebox.showinfo("Info", f"Clicker #{clicker['id']} stopped after {stop_time_seconds} seconds"))
+                pass
+                #self.after(0, lambda: messagebox.showinfo("Info", f"Clicker #{clicker['id']} stopped after {stop_time_seconds} seconds"))
                 
         except ValueError as e:
             self.after(0, lambda: messagebox.showerror("Error", f"Invalid input in clicker #{clicker['id']}: {e}"))

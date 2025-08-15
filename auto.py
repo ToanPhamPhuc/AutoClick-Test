@@ -78,7 +78,7 @@ class AutoClickerApp(ctk.CTk):
         self.hours.insert(0, "0")
         self.mins.insert(0, "0")
         self.secs.insert(0, "0")
-        self.ms.insert(0, "1")
+        self.ms.insert(0, "24")
         self.hours.pack(side='left', padx=(5, 2))
         ctk.CTkLabel(row1, text="hours", font=("Segoe UI", 11)).pack(side='left')
         self.mins.pack(side='left', padx=(10, 2))

@@ -1,29 +1,101 @@
 {
-    "hotkey": "f6",
+    "hotkey": "f8",
     "clickers": [
         {
             "id": 1,
-            "x": "470",
-            "y": "482",
+            "x": "1901",
+            "y": "177",
             "click_type": "Left",
-            "interval": "1000",
+            "interval": "25",
             "stop_condition": "Forever",
             "stop_time": "3600",
             "running": false,
-            "start_time": 1754989686.726545,
-            "clicks": 17
+            "start_time": 1755223100.132846,
+            "clicks": 0
         },
         {
             "id": 2,
-            "x": "447",
-            "y": "715",
+            "x": "834",
+            "y": "386",
             "click_type": "Left",
-            "interval": "1000",
+            "interval": "50",
             "stop_condition": "Forever",
             "stop_time": "3600",
             "running": false,
-            "start_time": 1754989686.7602806,
-            "clicks": 18
+            "start_time": 1755223100.155179,
+            "clicks": 14284
+        },
+        {
+            "id": 3,
+            "x": "1375",
+            "y": "993",
+            "click_type": "Left",
+            "interval": "75",
+            "stop_condition": "Forever",
+            "stop_time": "3600",
+            "running": false,
+            "start_time": 1755223100.171515,
+            "clicks": 9583
+        },
+        {
+            "id": 4,
+            "x": "515",
+            "y": "989",
+            "click_type": "Left",
+            "interval": "100",
+            "stop_condition": "Forever",
+            "stop_time": "3600",
+            "running": false,
+            "start_time": 1755223100.187842,
+            "clicks": 7237
+        },
+        {
+            "id": 5,
+            "x": "42",
+            "y": "199",
+            "click_type": "Left",
+            "interval": "100",
+            "stop_condition": "Forever",
+            "stop_time": "3600",
+            "running": false,
+            "start_time": 1755223100.2053888,
+            "clicks": 7236
+        },
+        {
+            "id": 6,
+            "x": "752",
+            "y": "735",
+            "click_type": "Left",
+            "interval": "25",
+            "stop_condition": "Forever",
+            "stop_time": "3600",
+            "running": false,
+            "start_time": 1755223100.2322438,
+            "clicks": 27773
+        },
+        {
+            "id": 7,
+            "x": "1163",
+            "y": "739",
+            "click_type": "Left",
+            "interval": "26",
+            "stop_condition": "Forever",
+            "stop_time": "3600",
+            "running": false,
+            "start_time": 1755223100.2539804,
+            "clicks": 26635
+        },
+        {
+            "id": 8,
+            "x": "957",
+            "y": "841",
+            "click_type": "Left",
+            "interval": "24",
+            "stop_condition": "Forever",
+            "stop_time": "3600",
+            "running": false,
+            "start_time": 1755223100.285179,
+            "clicks": 28878
         }
     ]
 }
