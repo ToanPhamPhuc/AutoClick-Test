@@ -26,6 +26,13 @@ class MultiAutoClickerApp(ctk.CTk):
         self.listener_should_restart = False
         self.listener_thread = None
         self.settings_file = "clicker_settings.json"  # Define settings file
+        
+        # Advanced feature: work duration and pause duration
+        self.work_duration = 7  # seconds
+        self.pause_duration = 3  # seconds
+        self.is_paused = False
+        self.work_timer = None
+        self.pause_timer = None
 
         self._build_ui()
         self.load_settings()
@@ -57,6 +64,10 @@ class MultiAutoClickerApp(ctk.CTk):
                 self.save_settings()
             except Exception as e:
                 messagebox.showerror("Error", f"Failed to save settings before exit: {e}")
+        
+        # Cancel any active timers
+        self.cancel_advanced_timers()
+        
         self.destroy()
 
     def _build_ui(self):
@@ -103,6 +114,21 @@ class MultiAutoClickerApp(ctk.CTk):
                                        font=("Segoe UI", 11), width=100)
         self.hotkey_btn.pack(side='left', padx=(0, 20))
         
+        # Advanced feature controls
+        ctk.CTkLabel(global_controls, text="Work Duration (s):", font=("Segoe UI", 11)).pack(side='left', padx=(0, 5))
+        self.work_duration_entry = ctk.CTkEntry(global_controls, width=50, font=("Segoe UI", 11), 
+                                               placeholder_text="7", validate="key", 
+                                               validatecommand=(self.register(self.only_int), '%P'))
+        self.work_duration_entry.insert(0, str(self.work_duration))
+        self.work_duration_entry.pack(side='left', padx=(0, 10))
+        
+        ctk.CTkLabel(global_controls, text="Pause Duration (s):", font=("Segoe UI", 11)).pack(side='left', padx=(0, 5))
+        self.pause_duration_entry = ctk.CTkEntry(global_controls, width=50, font=("Segoe UI", 11), 
+                                                placeholder_text="3", validate="key", 
+                                                validatecommand=(self.register(self.only_int), '%P'))
+        self.pause_duration_entry.insert(0, str(self.pause_duration))
+        self.pause_duration_entry.pack(side='left', padx=(0, 20))
+        
         self.start_all_btn = ctk.CTkButton(global_controls, text=f"Start All ({self.hotkey.upper()})", 
                                           command=self.start_all_clickers, font=("Segoe UI", 11), width=120)
         self.start_all_btn.pack(side='left', padx=(0, 10))
@@ -113,12 +139,20 @@ class MultiAutoClickerApp(ctk.CTk):
         
         self.global_status = ctk.CTkLabel(global_frame, text="Status: No clickers running", font=("Segoe UI", 11))
         self.global_status.pack(pady=(5, 10))
+        
+        # Advanced feature status
+        self.advanced_status = ctk.CTkLabel(global_frame, text="Advanced Mode: Ready", font=("Segoe UI", 11), text_color="green")
+        self.advanced_status.pack(pady=(0, 10))
 
         save_btn = ctk.CTkButton(global_controls, text="Save Settings", command=self.save_settings, 
                                 font=("Segoe UI", 11), width=100)
         save_btn.pack(side='left', padx=(0, 10))
 
         self.add_clicker()
+        
+        # Bind change events for advanced feature settings
+        self.work_duration_entry.bind('<KeyRelease>', self.on_advanced_setting_change)
+        self.pause_duration_entry.bind('<KeyRelease>', self.on_advanced_setting_change)
 
     def add_clicker(self):
         clicker_id = self.next_id
@@ -273,6 +307,11 @@ class MultiAutoClickerApp(ctk.CTk):
         for clicker in self.clickers:
             if clicker['id'] == clicker_id:
                 if clicker['running']:
+                    return
+                
+                # Don't start individual clickers if advanced cycle is active
+                if self.work_timer or self.pause_timer:
+                    messagebox.showinfo("Info", "Cannot start individual clickers while advanced cycle is active. Use the global hotkey to control all clickers.")
                     return
                 
                 clicker['running'] = True
@@ -446,13 +485,72 @@ class MultiAutoClickerApp(ctk.CTk):
         total_count = len(self.clickers)
         
         if running_count == 0:
-            self.start_all_clickers()
+            # Start all clickers with advanced feature
+            self.start_advanced_cycle()
         else:
+            # Stop all clickers
             self.stop_all_clickers()
+            self.cancel_advanced_timers()
+
+    def start_advanced_cycle(self):
+        """Start the advanced work/pause cycle"""
+        # Cancel any existing timers
+        self.cancel_advanced_timers()
+        
+        # Start all clickers
+        self.start_all_clickers()
+        
+        # Update status
+        self.advanced_status.configure(text=f"Advanced Mode: Working for {self.work_duration}s", text_color="orange")
+        
+        # Set timer to pause after work duration
+        self.work_timer = self.after(self.work_duration * 1000, self.pause_clickers)
+
+    def pause_clickers(self):
+        """Pause all clickers for the pause duration"""
+        if not self.is_paused:
+            self.is_paused = True
+            
+            # Stop all clickers temporarily
+            self.stop_all_clickers()
+            
+            # Update status
+            self.advanced_status.configure(text=f"Advanced Mode: Paused for {self.pause_duration}s", text_color="red")
+            
+            # Set timer to resume after pause duration
+            self.pause_timer = self.after(self.pause_duration * 1000, self.resume_clickers)
+
+    def resume_clickers(self):
+        """Resume all clickers and continue the cycle"""
+        self.is_paused = False
+        
+        # Start all clickers again
+        self.start_all_clickers()
+        
+        # Update status
+        self.advanced_status.configure(text=f"Advanced Mode: Working for {self.work_duration}s", text_color="orange")
+        
+        # Set timer to pause again after work duration
+        self.work_timer = self.after(self.work_duration * 1000, self.pause_clickers)
+
+    def cancel_advanced_timers(self):
+        """Cancel all advanced feature timers"""
+        if self.work_timer:
+            self.after_cancel(self.work_timer)
+            self.work_timer = None
+        
+        if self.pause_timer:
+            self.after_cancel(self.pause_timer)
+            self.pause_timer = None
+        
+        self.is_paused = False
+        self.advanced_status.configure(text="Advanced Mode: Ready", text_color="green")
 
     def save_settings(self):
         data = {
             "hotkey": self.hotkey,
+            "work_duration": self.work_duration,
+            "pause_duration": self.pause_duration,
             "clickers": []
         }
         for clicker in self.clickers:
@@ -483,6 +581,19 @@ class MultiAutoClickerApp(ctk.CTk):
                     settings = json.load(f)
                     self.hotkey = settings.get('hotkey', 'f6').lower()
                     
+                    # Load advanced feature settings
+                    self.work_duration = settings.get('work_duration', 7)
+                    self.pause_duration = settings.get('pause_duration', 3)
+                    
+                    # Update UI with loaded settings
+                    if hasattr(self, 'work_duration_entry'):
+                        self.work_duration_entry.delete(0, 'end')
+                        self.work_duration_entry.insert(0, str(self.work_duration))
+                    
+                    if hasattr(self, 'pause_duration_entry'):
+                        self.pause_duration_entry.delete(0, 'end')
+                        self.pause_duration_entry.insert(0, str(self.pause_duration))
+                    
                     for clicker in self.clickers:
                         clicker['row_frame'].destroy()
                     self.clickers.clear()
@@ -496,6 +607,11 @@ class MultiAutoClickerApp(ctk.CTk):
                     self.start_all_btn.configure(text=f"Start All ({self.hotkey.upper()})")
                     self.stop_all_btn.configure(text=f"Stop All ({self.hotkey.upper()})")
                     self.update_global_status()
+                    
+                    # Update advanced status
+                    if hasattr(self, 'advanced_status'):
+                        self.advanced_status.configure(text=f"Advanced Mode: Work {self.work_duration}s, Pause {self.pause_duration}s")
+                    
                     print("Settings loaded successfully.")
             except Exception as e:
                 messagebox.showerror("Error", f"Failed to load settings: {e}")
@@ -605,6 +721,12 @@ class MultiAutoClickerApp(ctk.CTk):
         interval_entry.bind('<KeyRelease>', on_setting_change)
         stop_time_entry.bind('<KeyRelease>', on_setting_change)
         click_type.configure(command=on_setting_change)
+
+    def on_advanced_setting_change(self, event=None):
+        self.unsaved_changes = True
+        self.work_duration = int(self.work_duration_entry.get() or 7)
+        self.pause_duration = int(self.pause_duration_entry.get() or 3)
+        self.advanced_status.configure(text=f"Advanced Mode: Work {self.work_duration}s, Pause {self.pause_duration}s")
 
 if __name__ == '__main__':
     app = MultiAutoClickerApp()
