@@ -309,8 +309,8 @@ class MultiAutoClickerApp(ctk.CTk):
                 if clicker['running']:
                     return
                 
-                # Don't start individual clickers if advanced cycle is active
-                if self.work_timer or self.pause_timer:
+                # Only block individual clickers if advanced cycle is actively working (not paused)
+                if self.work_timer and not self.is_paused:
                     messagebox.showinfo("Info", "Cannot start individual clickers while advanced cycle is active. Use the global hotkey to control all clickers.")
                     return
                 
@@ -387,14 +387,44 @@ class MultiAutoClickerApp(ctk.CTk):
             self.after(0, lambda: self.stop_clicker(clicker['id']))
 
     def start_all_clickers(self):
+        # Update UI first for all clickers
+        for clicker in self.clickers:
+            if hasattr(clicker, 'start_btn') and hasattr(clicker, 'stop_btn') and hasattr(clicker, 'status_label'):
+                clicker['start_btn'].configure(state='disabled')
+                clicker['stop_btn'].configure(state='normal')
+                clicker['status_label'].configure(text="Running...")
+        
+        # Start all clicker threads
         for clicker in self.clickers:
             if not clicker['running']:
-                self.start_clicker(clicker['id'])
+                clicker['running'] = True
+                clicker['thread'] = threading.Thread(
+                    target=self.perform_clicks, 
+                    args=(clicker,),
+                    daemon=True
+                )
+                clicker['thread'].start()
+        
+        self.update_global_status()
+        self.unsaved_changes = True
 
     def stop_all_clickers(self):
+        # Set running flag to False for all clickers simultaneously
         for clicker in self.clickers:
-            if clicker['running']:
-                self.stop_clicker(clicker['id'])
+            clicker['running'] = False
+        
+        # Wait a moment for all threads to stop, then update UI
+        self.after(100, self.update_clicker_ui_after_stop)
+
+    def update_clicker_ui_after_stop(self):
+        """Update UI after all clickers have been stopped"""
+        for clicker in self.clickers:
+            if hasattr(clicker, 'start_btn') and hasattr(clicker, 'stop_btn') and hasattr(clicker, 'status_label'):
+                clicker['start_btn'].configure(state='normal')
+                clicker['stop_btn'].configure(state='disabled')
+                clicker['status_label'].configure(text="Idle")
+        
+        self.update_global_status()
 
     def update_global_status(self):
         running_count = sum(1 for clicker in self.clickers if clicker['running'])
@@ -511,14 +541,28 @@ class MultiAutoClickerApp(ctk.CTk):
         if not self.is_paused:
             self.is_paused = True
             
-            # Stop all clickers temporarily
-            self.stop_all_clickers()
+            # Stop all clickers simultaneously by setting running flag to False
+            for clicker in self.clickers:
+                clicker['running'] = False
+            
+            # Wait a moment for all threads to stop, then update UI
+            self.after(100, self.update_clicker_ui_after_pause)
             
             # Update status
             self.advanced_status.configure(text=f"Advanced Mode: Paused for {self.pause_duration}s", text_color="red")
             
             # Set timer to resume after pause duration
             self.pause_timer = self.after(self.pause_duration * 1000, self.resume_clickers)
+
+    def update_clicker_ui_after_pause(self):
+        """Update UI after all clickers have been paused"""
+        for clicker in self.clickers:
+            if hasattr(clicker, 'start_btn') and hasattr(clicker, 'stop_btn') and hasattr(clicker, 'status_label'):
+                clicker['start_btn'].configure(state='normal')
+                clicker['stop_btn'].configure(state='disabled')
+                clicker['status_label'].configure(text="Paused")
+        
+        self.update_global_status()
 
     def resume_clickers(self):
         """Resume all clickers and continue the cycle"""
@@ -544,7 +588,24 @@ class MultiAutoClickerApp(ctk.CTk):
             self.pause_timer = None
         
         self.is_paused = False
+        
+        # Ensure all clickers are properly stopped
+        for clicker in self.clickers:
+            clicker['running'] = False
+        
+        # Update UI after a short delay to ensure threads have stopped
+        self.after(100, self.finalize_advanced_stop)
+
+    def finalize_advanced_stop(self):
+        """Finalize the advanced cycle stop by updating UI"""
+        for clicker in self.clickers:
+            if hasattr(clicker, 'start_btn') and hasattr(clicker, 'stop_btn') and hasattr(clicker, 'status_label'):
+                clicker['start_btn'].configure(state='normal')
+                clicker['stop_btn'].configure(state='disabled')
+                clicker['status_label'].configure(text="Idle")
+        
         self.advanced_status.configure(text="Advanced Mode: Ready", text_color="green")
+        self.update_global_status()
 
     def save_settings(self):
         data = {

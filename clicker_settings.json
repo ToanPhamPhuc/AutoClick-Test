@@ -1,5 +1,7 @@
 {
     "hotkey": "f8",
+    "work_duration": 7,
+    "pause_duration": 2,
     "clickers": [
         {
             "id": 1,
@@ -10,8 +12,8 @@
             "stop_condition": "Forever",
             "stop_time": "3600",
             "running": false,
-            "start_time": 1756139321.9280477,
-            "clicks": 12968
+            "start_time": 1756140454.0284817,
+            "clicks": 16
         },
         {
             "id": 2,
@@ -22,8 +24,8 @@
             "stop_condition": "Forever",
             "stop_time": "3600",
             "running": false,
-            "start_time": 1756139321.9528897,
-            "clicks": 6694
+            "start_time": 1756140454.0286324,
+            "clicks": 9
         },
         {
             "id": 3,
@@ -34,8 +36,8 @@
             "stop_condition": "Forever",
             "stop_time": "3600",
             "running": false,
-            "start_time": 1756139321.9701686,
-            "clicks": 4493
+            "start_time": 1756140454.0284386,
+            "clicks": 6
         },
         {
             "id": 4,
@@ -46,8 +48,8 @@
             "stop_condition": "Forever",
             "stop_time": "3600",
             "running": false,
-            "start_time": 1756139321.989045,
-            "clicks": 3396
+            "start_time": 1756140454.0283747,
+            "clicks": 5
         },
         {
             "id": 5,
@@ -58,8 +60,8 @@
             "stop_condition": "Forever",
             "stop_time": "3600",
             "running": false,
-            "start_time": 1756139322.0124469,
-            "clicks": 3396
+            "start_time": 1756140454.0284107,
+            "clicks": 5
         },
         {
             "id": 6,
@@ -70,8 +72,8 @@
             "stop_condition": "Forever",
             "stop_time": "3600",
             "running": false,
-            "start_time": 1756139322.0295882,
-            "clicks": 12972
+            "start_time": 1756140454.0285373,
+            "clicks": 16
         },
         {
             "id": 7,
@@ -82,8 +84,8 @@
             "stop_condition": "Forever",
             "stop_time": "3600",
             "running": false,
-            "start_time": 1756139322.0456061,
-            "clicks": 12475
+            "start_time": 1756140454.0285752,
+            "clicks": 16
         },
         {
             "id": 8,
@@ -94,8 +96,8 @@
             "stop_condition": "Forever",
             "stop_time": "3600",
             "running": false,
-            "start_time": 1756139322.0636096,
-            "clicks": 13534
+            "start_time": 1756140454.0286028,
+            "clicks": 17
         }
     ]
 }
