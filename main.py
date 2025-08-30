@@ -33,6 +33,10 @@ class MultiAutoClickerApp(ctk.CTk):
         self.is_paused = False
         self.work_timer = None
         self.pause_timer = None
+        
+        # Admin mode flag
+        self.admin_mode_active = False
+        self.admin_clicker_id = None
 
         self._build_ui()
         self.load_settings()
@@ -90,8 +94,8 @@ class MultiAutoClickerApp(ctk.CTk):
         header_frame = ctk.CTkFrame(table_frame)
         header_frame.pack(fill='x', padx=5, pady=5)
         
-        headers = ["ID", "X", "Y", "L/R", "Interval (ms)", "Stop After", "Status", "Actions"]
-        header_widths = [50, 60, 60, 60, 100, 120, 100, 200]
+        headers = ["ID", "X", "Y", "L/R", "Interval (ms)", "Stop After", "Admin", "Status", "Actions"]
+        header_widths = [50, 60, 60, 60, 100, 120, 60, 100, 200]
         
         for i, (header, width) in enumerate(zip(headers, header_widths)):
             label = ctk.CTkLabel(header_frame, text=header, font=("Segoe UI", 11, "bold"), width=width)
@@ -143,10 +147,42 @@ class MultiAutoClickerApp(ctk.CTk):
         # Advanced feature status
         self.advanced_status = ctk.CTkLabel(global_frame, text="Advanced Mode: Ready", font=("Segoe UI", 11), text_color="green")
         self.advanced_status.pack(pady=(0, 10))
+        
+        # Admin mode status
+        self.admin_status = ctk.CTkLabel(global_frame, text="Admin Mode: Inactive", font=("Segoe UI", 11), text_color="gray")
+        self.admin_status.pack(pady=(0, 10))
 
         save_btn = ctk.CTkButton(global_controls, text="Save Settings", command=self.save_settings, 
                                 font=("Segoe UI", 11), width=100)
         save_btn.pack(side='left', padx=(0, 10))
+        
+        # Admin mode trigger buttons
+        admin_frame = ctk.CTkFrame(global_controls)
+        admin_frame.pack(side='left', padx=(20, 0))
+        
+        ctk.CTkLabel(admin_frame, text="Admin Reset:", font=("Segoe UI", 11)).pack(side='left', padx=(5, 5))
+        
+        reset_btn_3s = ctk.CTkButton(admin_frame, text="Reset 3s", 
+                                    command=lambda: self.trigger_admin_mode_manual(9, 3), 
+                                    font=("Segoe UI", 11), width=80, height=30)
+        reset_btn_3s.pack(side='left', padx=(0, 5))
+        
+        reset_btn_4s = ctk.CTkButton(admin_frame, text="Reset 4s", 
+                                    command=lambda: self.trigger_admin_mode_manual(10, 4), 
+                                    font=("Segoe UI", 11), width=80, height=30)
+        reset_btn_4s.pack(side='left', padx=(0, 5))
+        
+        # Debug button
+        debug_btn = ctk.CTkButton(admin_frame, text="DEBUG", 
+                                 command=lambda: self.debug_admin_mode(), 
+                                 font=("Segoe UI", 11), width=80, height=30, fg_color="red")
+        debug_btn.pack(side='left', padx=(5, 0))
+        
+        # Status check button
+        status_btn = ctk.CTkButton(admin_frame, text="STATUS", 
+                                  command=lambda: self.check_all_clickers_status(), 
+                                  font=("Segoe UI", 11), width=80, height=30, fg_color="orange")
+        status_btn.pack(side='left', padx=(5, 0))
 
         self.add_clicker()
         
@@ -197,6 +233,11 @@ class MultiAutoClickerApp(ctk.CTk):
         stop_time_entry.insert(0, "3600")
         stop_time_entry.pack(side='left', padx=(5, 0))
         
+        # Admin clicker checkbox
+        admin_var = ctk.BooleanVar(value=False)
+        admin_checkbox = ctk.CTkCheckBox(stop_frame, text="Admin", variable=admin_var, font=("Segoe UI", 9))
+        admin_checkbox.pack(side='left', padx=(10, 0))
+        
         status_label = ctk.CTkLabel(row_frame, text="Idle", font=("Segoe UI", 11), width=100)
         status_label.pack(side='left', padx=2)
         
@@ -235,7 +276,9 @@ class MultiAutoClickerApp(ctk.CTk):
             'click_type': click_type,
             'interval_entry': interval_entry,
             'stop_condition_var': stop_condition_var,
-            'stop_time_entry': stop_time_entry
+            'stop_time_entry': stop_time_entry,
+            'admin_var': admin_var,
+            'admin_checkbox': admin_checkbox
         }
         
         self.clickers.append(clicker_data)
@@ -258,6 +301,7 @@ class MultiAutoClickerApp(ctk.CTk):
         interval_entry.bind('<KeyRelease>', on_setting_change)
         stop_time_entry.bind('<KeyRelease>', on_setting_change)
         click_type.configure(command=on_setting_change)
+        admin_checkbox.configure(command=on_setting_change)
         
         self.unsaved_changes = True
 
@@ -314,6 +358,13 @@ class MultiAutoClickerApp(ctk.CTk):
                     messagebox.showinfo("Info", "Cannot start individual clickers while advanced cycle is active. Use the global hotkey to control all clickers.")
                     return
                 
+                # Check if this is an admin clicker
+                is_admin = clicker.get('admin_var', False).get() if hasattr(clicker.get('admin_var', False), 'get') else False
+                
+                if is_admin:
+                    # Stop all other clickers for 5 seconds
+                    self.stop_all_other_clickers_for_admin(clicker_id)
+                
                 clicker['running'] = True
                 clicker['thread'] = threading.Thread(
                     target=self.perform_clicks, 
@@ -324,7 +375,8 @@ class MultiAutoClickerApp(ctk.CTk):
                 
                 clicker['start_btn'].configure(state='disabled')
                 clicker['stop_btn'].configure(state='normal')
-                clicker['status_label'].configure(text="Running...")
+                status_text = "Admin Running..." if is_admin else "Running..."
+                clicker['status_label'].configure(text=status_text)
                 break
         
         self.update_global_status()
@@ -368,17 +420,22 @@ class MultiAutoClickerApp(ctk.CTk):
                 if stop_condition == "Time" and time.time() >= clicker['start_time'] + stop_time_seconds:
                     break
                 
+                # Perform the click
                 mouse_controller.position = (x, y)
                 mouse_controller.click(button_map[click_type])
-                
                 clicker['clicks'] += 1
+                
+                # Debug: Print click info every 10 clicks
+                if clicker['clicks'] % 10 == 0:
+                    print(f"Clicker #{clicker['id']} clicked {clicker['clicks']} times")
+                
+                # Simple sleep - the running flag will be checked on next iteration
                 time.sleep(interval_ms / 1000.0)
             
             self.after(0, lambda: self.stop_clicker(clicker['id']))
             if stop_condition == "Time":
                 pass
                 #self.after(0, lambda: messagebox.showinfo("Info", f"Clicker #{clicker['id']} stopped after {stop_time_seconds} seconds"))
-                
         except ValueError as e:
             self.after(0, lambda: messagebox.showerror("Error", f"Invalid input in clicker #{clicker['id']}: {e}"))
             self.after(0, lambda: self.stop_clicker(clicker['id']))
@@ -409,6 +466,13 @@ class MultiAutoClickerApp(ctk.CTk):
         self.unsaved_changes = True
 
     def stop_all_clickers(self):
+        # Clear any admin clicker states
+        if hasattr(self, 'previous_clicker_states'):
+            delattr(self, 'previous_clicker_states')
+        
+        # Reset admin status
+        self.admin_status.configure(text="Admin Mode: Inactive", text_color="gray")
+        
         # Set running flag to False for all clickers simultaneously
         for clicker in self.clickers:
             clicker['running'] = False
@@ -589,12 +653,20 @@ class MultiAutoClickerApp(ctk.CTk):
         
         self.is_paused = False
         
+        # Clear any admin clicker states
+        if hasattr(self, 'previous_clicker_states'):
+            delattr(self, 'previous_clicker_states')
+        
+        # Clear global admin mode flag
+        self.admin_mode_active = False
+        self.admin_clicker_id = None
+        
+        # Reset admin status
+        self.admin_status.configure(text="Admin Mode: Inactive", text_color="gray")
+        
         # Ensure all clickers are properly stopped
         for clicker in self.clickers:
             clicker['running'] = False
-        
-        # Update UI after a short delay to ensure threads have stopped
-        self.after(100, self.finalize_advanced_stop)
 
     def finalize_advanced_stop(self):
         """Finalize the advanced cycle stop by updating UI"""
@@ -625,7 +697,8 @@ class MultiAutoClickerApp(ctk.CTk):
                 "stop_time": clicker["stop_time_entry"].get(),
                 "running": clicker["running"],
                 "start_time": clicker["start_time"],
-                "clicks": clicker["clicks"]
+                "clicks": clicker["clicks"],
+                "admin": clicker.get("admin_var", False).get() if hasattr(clicker.get("admin_var", False), "get") else False
             })
         try:
             with open(self.settings_file, "w") as f:
@@ -721,6 +794,11 @@ class MultiAutoClickerApp(ctk.CTk):
         stop_time_entry.insert(0, str(clicker_data.get('stop_time', 3600)))
         stop_time_entry.pack(side='left', padx=(5, 0))
         
+        # Admin clicker checkbox
+        admin_var = ctk.BooleanVar(value=clicker_data.get('admin', False))
+        admin_checkbox = ctk.CTkCheckBox(stop_frame, text="Admin", variable=admin_var, font=("Segoe UI", 9))
+        admin_checkbox.pack(side='left', padx=(10, 0))
+        
         status_label = ctk.CTkLabel(row_frame, text="Idle", font=("Segoe UI", 11), width=100)
         status_label.pack(side='left', padx=2)
         
@@ -759,7 +837,9 @@ class MultiAutoClickerApp(ctk.CTk):
             'click_type': click_type,
             'interval_entry': interval_entry,
             'stop_condition_var': stop_condition_var,
-            'stop_time_entry': stop_time_entry
+            'stop_time_entry': stop_time_entry,
+            'admin_var': admin_var,
+            'admin_checkbox': admin_checkbox
         }
         
         self.clickers.append(clicker_data_stored)
@@ -782,12 +862,271 @@ class MultiAutoClickerApp(ctk.CTk):
         interval_entry.bind('<KeyRelease>', on_setting_change)
         stop_time_entry.bind('<KeyRelease>', on_setting_change)
         click_type.configure(command=on_setting_change)
+        admin_checkbox.configure(command=on_setting_change)
 
     def on_advanced_setting_change(self, event=None):
         self.unsaved_changes = True
         self.work_duration = int(self.work_duration_entry.get() or 7)
         self.pause_duration = int(self.pause_duration_entry.get() or 3)
         self.advanced_status.configure(text=f"Advanced Mode: Work {self.work_duration}s, Pause {self.pause_duration}s")
+
+    def force_stop_non_admin_clickers(self, admin_clicker_id):
+        """Force stop all non-admin clickers immediately"""
+        print(f"=== FORCE STOPPING ALL NON-ADMIN CLICKERS ===")
+        print(f"Admin clicker ID: {admin_clicker_id}")
+        print(f"Total clickers: {len(self.clickers)}")
+        
+        for clicker in self.clickers:
+            print(f"Checking clicker #{clicker['id']}: running={clicker['running']}, admin={clicker.get('admin_var', False).get()}")
+            
+            if clicker['id'] != admin_clicker_id:
+                print(f"FORCE STOPPING clicker #{clicker['id']}")
+                
+                # Force stop the clicker
+                clicker['running'] = False
+                clicker['force_stop'] = True
+                
+                # Try to terminate the thread more aggressively
+                if clicker['thread'] and clicker['thread'].is_alive():
+                    print(f"Thread for clicker #{clicker['id']} is alive, attempting to stop...")
+                    # Set a flag to force immediate stop
+                    clicker['force_stop'] = True
+                    
+                    # Try to join with very short timeout
+                    clicker['thread'].join(timeout=0.01)
+                    
+                    if clicker['thread'].is_alive():
+                        print(f"WARNING: Thread for clicker #{clicker['id']} is still alive after force stop!")
+                    else:
+                        print(f"Successfully stopped thread for clicker #{clicker['id']}")
+                
+                # Update UI immediately
+                clicker['start_btn'].configure(state='normal')
+                clicker['stop_btn'].configure(state='disabled')
+                clicker['status_label'].configure(text="FORCE STOPPED by Admin")
+                
+                print(f"Force stopped clicker #{clicker['id']}")
+            else:
+                print(f"Skipping admin clicker #{clicker['id']}")
+        
+        print(f"=== FORCE STOP COMPLETE ===")
+
+    def stop_all_other_clickers_for_admin(self, admin_clicker_id):
+        """Stops all other clickers for a specified duration when an admin clicker starts."""
+        stop_duration = 5 # seconds
+        
+        print(f"Admin clicker #{admin_clicker_id} started - stopping all other clickers for {stop_duration}s")
+        
+        # Store the previous state of all clickers BEFORE stopping them
+        self.previous_clicker_states = []
+        for clicker in self.clickers:
+            if clicker['id'] != admin_clicker_id:
+                self.previous_clicker_states.append({
+                    'id': clicker['id'],
+                    'was_running': clicker['running'],
+                    'start_btn_state': clicker['start_btn'].cget('state'),
+                    'stop_btn_state': clicker['stop_btn'].cget('state'),
+                    'status_text': clicker['status_label'].cget('text')
+                })
+        
+        # Stop all non-admin clickers using the same method that works in pause_clickers
+        for clicker in self.clickers:
+            if clicker['id'] != admin_clicker_id:
+                print(f"Stopping clicker #{clicker['id']} for admin clicker #{admin_clicker_id}")
+                clicker['running'] = False  # This is the key - same as pause_clickers
+        
+        # Update UI immediately
+        self.after(100, self.update_clicker_ui_after_admin_stop)
+        
+        # Update status
+        self.advanced_status.configure(text=f"Admin Mode: Stopping other clickers for {stop_duration}s", text_color="red")
+        self.admin_status.configure(text=f"Admin Mode: Active - Clicker #{admin_clicker_id} running", text_color="red")
+        
+        # Update global status
+        self.update_global_status()
+        
+        # Start countdown display
+        self.start_admin_countdown(stop_duration, admin_clicker_id)
+        
+        # Resume clickers after the specified duration
+        self.after(stop_duration * 1000, lambda: self.resume_clickers_after_admin(admin_clicker_id))
+
+    def update_clicker_ui_after_admin_stop(self):
+        """Update UI after all non-admin clickers have been stopped"""
+        for clicker in self.clickers:
+            if hasattr(clicker, 'start_btn') and hasattr(clicker, 'stop_btn') and hasattr(clicker, 'status_label'):
+                if clicker['id'] != getattr(self, 'admin_clicker_id', None):
+                    clicker['start_btn'].configure(state='normal')
+                    clicker['stop_btn'].configure(state='disabled')
+                    clicker['status_label'].configure(text="Stopped by Admin")
+        
+        self.update_global_status()
+
+    def start_admin_countdown(self, duration, admin_clicker_id):
+        """Display countdown for admin mode"""
+        if duration > 0:
+            self.admin_status.configure(text=f"Admin Mode: Active - Clicker #{admin_clicker_id} running - Resuming in {duration}s", text_color="red")
+            self.after(1000, lambda: self.start_admin_countdown(duration - 1, admin_clicker_id))
+
+    def resume_clickers_after_admin(self, admin_clicker_id):
+        """Resume clickers to their previous state after admin clicker delay."""
+        print(f"Resuming clickers after admin mode for clicker #{admin_clicker_id}")
+        
+        if hasattr(self, 'previous_clicker_states'):
+            for prev_state in self.previous_clicker_states:
+                for clicker in self.clickers:
+                    if clicker['id'] == prev_state['id']:
+                        print(f"Restoring clicker #{clicker['id']} to previous state")
+                        
+                        # Restore previous button states
+                        clicker['start_btn'].configure(state=prev_state['start_btn_state'])
+                        clicker['stop_btn'].configure(state=prev_state['stop_btn_state'])
+                        
+                        # Restore previous status
+                        if prev_state['was_running']:
+                            clicker['status_label'].configure(text="Running...")
+                        else:
+                            clicker['status_label'].configure(text="Idle")
+                        
+                        # If it was running before, restart it
+                        if prev_state['was_running']:
+                            print(f"Restarting clicker #{clicker['id']} that was running before")
+                            clicker['running'] = True
+                            clicker['thread'] = threading.Thread(
+                                target=self.perform_clicks, 
+                                args=(clicker,),
+                                daemon=True
+                            )
+                            clicker['thread'].start()
+                            clicker['start_btn'].configure(state='disabled')
+                            clicker['stop_btn'].configure(state='normal')
+                            clicker['status_label'].configure(text="Running...")
+                        break
+            
+            # Clear the stored states
+            delattr(self, 'previous_clicker_states')
+        
+        # Update status
+        self.advanced_status.configure(text="Advanced Mode: Ready", text_color="green")
+        self.admin_status.configure(text="Admin Mode: Inactive", text_color="gray")
+        
+        self.update_global_status()
+
+    def trigger_admin_mode_manual(self, admin_clicker_id, delay_seconds=0):
+        """Manually trigger admin mode to stop all other clickers for 5 seconds"""
+        print(f"Manually triggering admin mode for clicker #{admin_clicker_id} with {delay_seconds}s delay")
+        
+        if delay_seconds > 0:
+            # Schedule the admin mode activation
+            self.after(delay_seconds * 1000, lambda: self.activate_admin_mode(admin_clicker_id))
+        else:
+            # Activate admin mode immediately
+            self.activate_admin_mode(admin_clicker_id)
+
+    def activate_admin_mode(self, admin_clicker_id):
+        """Activate admin mode for a specific clicker"""
+        print(f"=== ACTIVATING ADMIN MODE ===")
+        print(f"Admin clicker ID: {admin_clicker_id}")
+        
+        # Find the admin clicker
+        admin_clicker = None
+        for clicker in self.clickers:
+            if clicker['id'] == admin_clicker_id:
+                admin_clicker = clicker
+                break
+        
+        if admin_clicker and admin_clicker.get('admin_var', False).get():
+            print(f"Found admin clicker #{admin_clicker_id}, admin_var={admin_clicker.get('admin_var', False).get()}")
+            
+            # Start the admin clicker
+            admin_clicker['running'] = True
+            admin_clicker['thread'] = threading.Thread(
+                target=self.perform_clicks, 
+                args=(admin_clicker,),
+                daemon=True
+            )
+            admin_clicker['thread'].start()
+            
+            admin_clicker['start_btn'].configure(state='disabled')
+            admin_clicker['stop_btn'].configure(state='normal')
+            admin_clicker['status_label'].configure(text="Admin Running...")
+            
+            print(f"Admin clicker #{admin_clicker_id} started successfully")
+            
+            # Stop all other clickers for 5 seconds
+            print(f"Calling stop_all_other_clickers_for_admin...")
+            self.stop_all_other_clickers_for_admin(admin_clicker_id)
+            
+            self.update_global_status()
+            self.unsaved_changes = True
+        else:
+            print(f"ERROR: Clicker #{admin_clicker_id} is not an admin clicker!")
+            print(f"Clicker found: {admin_clicker is not None}")
+            if admin_clicker:
+                print(f"Admin var: {admin_clicker.get('admin_var', False)}")
+                print(f"Admin var get(): {admin_clicker.get('admin_var', False).get() if hasattr(admin_clicker.get('admin_var', False), 'get') else 'No get method'}")
+        
+        print(f"=== ADMIN MODE ACTIVATION COMPLETE ===")
+
+    def start_delayed_admin_clicker(self, clicker_id, delay_seconds):
+        """Start an admin clicker after a delay and activate admin mode"""
+        def delayed_start():
+            print(f"Starting delayed admin clicker #{clicker_id} after {delay_seconds}s delay")
+            
+            # Find the clicker
+            for clicker in self.clickers:
+                if clicker['id'] == clicker_id:
+                    if not clicker['running']:
+                        # Check if this is an admin clicker
+                        is_admin = clicker.get('admin_var', False).get() if hasattr(clicker.get('admin_var', False), 'get') else False
+                        
+                        if is_admin:
+                            print(f"Activating admin mode for delayed admin clicker #{clicker_id}")
+                            # Stop all other clickers for 5 seconds
+                            self.stop_all_other_clickers_for_admin(clicker_id)
+                        
+                        # Start the clicker
+                        clicker['running'] = True
+                        clicker['thread'] = threading.Thread(
+                            target=self.perform_clicks, 
+                            args=(clicker,),
+                            daemon=True
+                        )
+                        clicker['thread'].start()
+                        
+                        clicker['start_btn'].configure(state='disabled')
+                        clicker['stop_btn'].configure(state='normal')
+                        status_text = "Admin Running..." if is_admin else "Running..."
+                        clicker['status_label'].configure(text=status_text)
+                        
+                        self.update_global_status()
+                        self.unsaved_changes = True
+                    break
+        
+        # Schedule the delayed start
+        self.after(delay_seconds * 1000, delayed_start)
+
+    def debug_admin_mode(self):
+        """Manually trigger admin mode for debugging purposes."""
+        print("Manually triggering admin mode for clicker #10 with 0s delay (immediate).")
+        self.activate_admin_mode(10)
+
+    def check_all_clickers_status(self):
+        """Check and display the current status of all clickers"""
+        print("=== CURRENT CLICKER STATUS ===")
+        print(f"Admin mode active: {self.admin_mode_active}")
+        print(f"Admin clicker ID: {self.admin_clicker_id}")
+        print(f"Total clickers: {len(self.clickers)}")
+        
+        for clicker in self.clickers:
+            print(f"Clicker #{clicker['id']}:")
+            print(f"  - Running: {clicker['running']}")
+            print(f"  - Admin: {clicker.get('admin_var', False).get() if hasattr(clicker.get('admin_var', False), 'get') else 'No admin_var'}")
+            print(f"  - Force stop: {clicker.get('force_stop', False)}")
+            print(f"  - Thread alive: {clicker['thread'].is_alive() if clicker['thread'] else 'No thread'}")
+            print(f"  - Status: {clicker['status_label'].cget('text')}")
+        
+        print("=== END STATUS ===")
 
 if __name__ == '__main__':
     app = MultiAutoClickerApp()

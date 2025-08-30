@@ -1,103 +1,111 @@
 {
     "hotkey": "f8",
-    "work_duration": 7,
-    "pause_duration": 2,
+    "work_duration": 14400,
+    "pause_duration": 1,
     "clickers": [
         {
             "id": 1,
             "x": "1901",
             "y": "177",
             "click_type": "Left",
-            "interval": "25",
+            "interval": "50",
             "stop_condition": "Forever",
             "stop_time": "3600",
             "running": false,
-            "start_time": 1756140454.0284817,
-            "clicks": 16
+            "start_time": 1756523368.5080802,
+            "clicks": 219,
+            "admin": false
         },
         {
             "id": 2,
             "x": "834",
             "y": "386",
             "click_type": "Left",
-            "interval": "50",
+            "interval": "100",
             "stop_condition": "Forever",
             "stop_time": "3600",
             "running": false,
-            "start_time": 1756140454.0286324,
-            "clicks": 9
+            "start_time": 1756523368.5083952,
+            "clicks": 111,
+            "admin": false
         },
         {
             "id": 3,
             "x": "1375",
             "y": "993",
             "click_type": "Left",
-            "interval": "75",
+            "interval": "150",
             "stop_condition": "Forever",
             "stop_time": "3600",
             "running": false,
-            "start_time": 1756140454.0284386,
-            "clicks": 6
+            "start_time": 1756523368.5089784,
+            "clicks": 75,
+            "admin": false
         },
         {
             "id": 4,
             "x": "515",
             "y": "989",
             "click_type": "Left",
-            "interval": "100",
+            "interval": "200",
             "stop_condition": "Forever",
             "stop_time": "3600",
             "running": false,
-            "start_time": 1756140454.0283747,
-            "clicks": 5
+            "start_time": 1756523368.509237,
+            "clicks": 57,
+            "admin": false
         },
         {
             "id": 5,
             "x": "42",
             "y": "199",
             "click_type": "Left",
-            "interval": "100",
+            "interval": "200",
             "stop_condition": "Forever",
             "stop_time": "3600",
             "running": false,
-            "start_time": 1756140454.0284107,
-            "clicks": 5
+            "start_time": 1756523368.509781,
+            "clicks": 57,
+            "admin": false
         },
         {
             "id": 6,
             "x": "752",
             "y": "735",
             "click_type": "Left",
-            "interval": "25",
+            "interval": "50",
             "stop_condition": "Forever",
             "stop_time": "3600",
             "running": false,
-            "start_time": 1756140454.0285373,
-            "clicks": 16
+            "start_time": 1756523368.5101163,
+            "clicks": 219,
+            "admin": false
         },
         {
             "id": 7,
             "x": "1163",
             "y": "739",
             "click_type": "Left",
-            "interval": "26",
+            "interval": "52",
             "stop_condition": "Forever",
             "stop_time": "3600",
             "running": false,
-            "start_time": 1756140454.0285752,
-            "clicks": 16
+            "start_time": 1756523368.509959,
+            "clicks": 210,
+            "admin": false
         },
         {
             "id": 8,
             "x": "957",
             "y": "841",
             "click_type": "Left",
-            "interval": "24",
+            "interval": "48",
             "stop_condition": "Forever",
             "stop_time": "3600",
             "running": false,
-            "start_time": 1756140454.0286028,
-            "clicks": 17
+            "start_time": 1756523368.5103426,
+            "clicks": 228,
+            "admin": false
         }
     ]
 }
